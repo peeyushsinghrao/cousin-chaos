@@ -88,7 +88,7 @@ class DisclaimerDialog extends StatelessWidget {
                   icon: Icons.privacy_tip_rounded,
                   color: AppColors.neonCyan,
                   title: 'Respect privacy',
-                  description: 'Don\\'t spill the beans! Remember that what happens in the game, stays in the game.',
+                  description: "Don't spill the beans! Remember that what happens in the game, stays in the game.",
                 ),
               ),
               

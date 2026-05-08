@@ -150,7 +150,7 @@ class _DynamicTimerWidgetState extends State<DynamicTimerWidget> with SingleTick
               child: ZoomIn(
                 duration: const Duration(milliseconds: 500),
                 child: Text(
-                  'TIME\\'S UP!',
+                  "TIME'S UP!",
                   style: GoogleFonts.poppins(
                     fontSize: 48,
                     fontWeight: FontWeight.w900,

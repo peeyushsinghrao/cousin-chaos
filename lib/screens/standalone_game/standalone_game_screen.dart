@@ -27,7 +27,7 @@ class _StandaloneGameScreenState extends State<StandaloneGameScreen> {
   bool _isLoading = true;
 
   // Local Trivia Database
-  final List<Map<String, String>> _triviaDb = TriviaData.questions;
+  final List<Map<String, dynamic>> _triviaDb = TriviaData.questions;
 
   @override
   void initState() {

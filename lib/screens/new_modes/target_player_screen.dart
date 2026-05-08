@@ -38,7 +38,7 @@ class _TargetPlayerScreenState extends State<TargetPlayerScreen> {
     'Savage': [
       'Roast their fashion sense in 3 words.',
       'What is the cringiest thing they have ever said?',
-      'Name one thing they think they are good at, but actually aren\\'t.'
+      "Name one thing they think they are good at, but actually aren't."
     ],
     'Friendly': [
       'What is your favorite memory with them?',

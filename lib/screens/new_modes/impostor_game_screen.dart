@@ -68,7 +68,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
     int impostorCount = _players.length <= 4 ? 1 : 2;
     
     final selectedImpostors = List.from(_players)..shuffle();
-    _impostorIds = selectedImpostors.take(impostorCount).map((p) => p.id).toList();
+    _impostorIds = selectedImpostors.take(impostorCount).map<String>((p) => p.id as String).toList();
     
     final words = ImpostorData.categories[widget.category] ?? ['Mystery'];
     _secretWord = words[_random.nextInt(words.length)];
