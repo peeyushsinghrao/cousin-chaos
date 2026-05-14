@@ -2,6 +2,8 @@
 // 24 categories × 75 question pairs = 1800 pairs
 // Keep your existing ImpostorQuestion class/model in the project.
 
+import '../../models/impostor_question.dart';
+
 final Map<String, List<ImpostorQuestion>> impostorQuestions = {
   'Gaming': [
     ImpostorQuestion(

@@ -13,7 +13,7 @@ import '../new_modes/bomb_pass_screen.dart';
 import '../new_modes/chaos_mode_screen.dart';
 import '../new_modes/freeze_mode_screen.dart';
 import '../new_modes/hot_seat_screen.dart';
-import '../new_modes/impostor_players_screen.dart';
+import '../new_modes/impostor_mode_setup_screen.dart';
 import '../new_modes/judge_me_screen.dart';
 import '../new_modes/laugh_attack_screen.dart';
 import '../new_modes/last_standing_screen.dart';
@@ -80,11 +80,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 
-                // FAB: Play Now
-                Visibility(
-                  visible: _selectedTab == 0,
-                  child: _buildPlayNowFAB(),
-                ),
                 
                 // BottomNavBar
                 _buildBottomNavBar(),
@@ -156,85 +151,29 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.menu),
-                color: AppColors.primary,
-                onPressed: () {},
-              ),
-              const SizedBox(width: 16),
-              PulseGlowAnimation(
-                duration: const Duration(seconds: 3),
-                glowColor: AppColors.primary,
-                child: Text(
-                  'COUSIN CHAOS',
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: AppColors.primary,
-                    fontSize: 24,
-                    shadows: [
-                      Shadow(
-                        color: AppColors.primary.withOpacity(0.8),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.menu),
+            color: AppColors.primary,
+            onPressed: () {},
           ),
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Player One',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Text(
-                    'CHAOS MASTER',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
+          const SizedBox(width: 16),
+          PulseGlowAnimation(
+            duration: const Duration(seconds: 3),
+            glowColor: AppColors.primary,
+            child: Text(
+              'COUSIN CHAOS',
+              style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                color: AppColors.primary,
+                fontSize: 24,
+                shadows: [
+                  Shadow(
+                    color: AppColors.primary.withOpacity(0.8),
+                    blurRadius: 10,
                   ),
                 ],
               ),
-              const SizedBox(width: 12),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity(0.5),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.3),
-                      blurRadius: 15,
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: Container(
-                    color: AppColors.surfaceContainer,
-                    child: const Icon(
-                      Icons.person,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -356,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
             DisclaimerDialog.show(context, () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ImpostorPlayersScreen()),
+                MaterialPageRoute(builder: (_) => const ImpostorModeSetupScreen()),
               );
             });
           },
@@ -386,12 +325,14 @@ class _HomeScreenState extends State<HomeScreen> {
         child: GlassCard(
           borderRadius: 16,
           padding: EdgeInsets.zero,
-          boxShadow: BoxShadow(
-            color: color.withOpacity(0.4),
-            blurRadius: 50,
-            spreadRadius: -12,
-            offset: const Offset(0, 20),
-          ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.4),
+              blurRadius: 50,
+              spreadRadius: -12,
+              offset: const Offset(0, 20),
+            ),
+          ],
           child: Container(
             height: 192,
             decoration: BoxDecoration(
@@ -415,10 +356,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: GlassCard(
                     borderRadius: 20,
                     padding: const EdgeInsets.all(8),
-                    boxShadow: BoxShadow(
-                      color: color.withOpacity(0.4),
-                      blurRadius: 20,
-                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.4),
+                        blurRadius: 20,
+                      ),
+                    ],
                     child: Icon(
                       icon,
                       color: color,
@@ -745,52 +688,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildPlayNowFAB() {
-    return Positioned(
-      bottom: 100,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: FadeInUpAnimation(
-          duration: const Duration(milliseconds: 600),
-          delay: const Duration(milliseconds: 800),
-          child: GlassButton(
-            isPrimary: true,
-            height: 56,
-            borderRadius: 28,
-            gradient: AppColors.primaryGradient,
-            boxShadow: BoxShadow(
-              color: AppColors.primary.withOpacity(0.5),
-              blurRadius: 30,
-              spreadRadius: 0,
-            ),
-            onPressed: () {
-              DisclaimerDialog.show(context, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PackSelectionScreen()),
-                );
-              });
-            },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.play_arrow, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  'PLAY NOW',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppColors.onPrimaryFixed,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildBottomNavBar() {
     return Positioned(

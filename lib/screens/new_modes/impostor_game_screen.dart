@@ -14,7 +14,9 @@ class ImpostorGameScreen extends StatefulWidget {
   final String category;
   final int? timeLimitSeconds;
   final bool timeLimitEnabled;
+  final int impostorCount;
   final List<ImpostorPlayer> players;
+  final List<String>? customWords;
 
   const ImpostorGameScreen({
     super.key,
@@ -22,6 +24,8 @@ class ImpostorGameScreen extends StatefulWidget {
     required this.players,
     this.timeLimitSeconds,
     this.timeLimitEnabled = true,
+    this.impostorCount = 0,
+    this.customWords,
   });
 
   @override
@@ -40,8 +44,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
   
   bool _isRevealing = false;
   
-  // Timer for discussion
-  int _timeLeft = 300; // 5 minutes default
+  int _timeLeft = 300;
   Timer? _discussionTimer;
 
   ImpostorPlayer? _votedPlayer;
@@ -68,24 +71,27 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
       Navigator.pop(context);
       return;
     }
-    
+
     _players = List.from(widget.players)..shuffle();
     _currentPlayerIndex = 0;
-    
-    // Set timer based on widget parameters
+
     if (widget.timeLimitEnabled && widget.timeLimitSeconds != null) {
       _timeLeft = widget.timeLimitSeconds!;
     } else {
-      _timeLeft = 300; // Default 5 minutes
+      _timeLeft = 300;
     }
-    
-    int impostorCount = _getRecommendedImpostorCount(_players.length);
+
+    final int impostorCount = widget.impostorCount > 0
+        ? widget.impostorCount
+        : _getRecommendedImpostorCount(_players.length);
     final selectedImpostors = List.from(_players)..shuffle();
-    _impostorIds = selectedImpostors.take(impostorCount).map((p) => p.id as String).toList();
-    
-    final words = ImpostorData.categories[widget.category] ?? ['Mystery'];
+    _impostorIds = selectedImpostors.take(impostorCount).map((p) => p.id).toList();
+
+    final words = (widget.customWords != null && widget.customWords!.isNotEmpty)
+        ? widget.customWords!
+        : ImpostorData.categories[widget.category] ?? ['MYSTERY'];
     _secretWord = words[_random.nextInt(words.length)];
-    
+
     setState(() {
       _currentPhase = ImpostorPhase.passDevice;
     });
@@ -144,10 +150,10 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
         decoration: BoxDecoration(
           gradient: RadialGradient(
             colors: [
-              _currentPhase == ImpostorPhase.result && (_votedPlayer != null && _impostorIds.contains(_votedPlayer!.id)) 
-                ? AppColors.neonGreen.withAlpha(40) 
-                : AppColors.neonPink.withAlpha(40), 
-              AppColors.background
+              _currentPhase == ImpostorPhase.result && (_votedPlayer != null && _impostorIds.contains(_votedPlayer!.id))
+                ? AppColors.neonGreen.withAlpha(40)
+                : AppColors.neonPink.withAlpha(40),
+              AppColors.background,
             ],
             radius: 1.2,
             center: Alignment.topCenter,
@@ -213,7 +219,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
   Widget _buildRevealPhase() {
     final player = _players[_currentPlayerIndex];
     final isImpostor = _impostorIds.contains(player.id);
-    
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [

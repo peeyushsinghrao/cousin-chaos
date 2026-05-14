@@ -7,6 +7,7 @@ import 'screens/splash/splash_screen.dart';
 import 'services/player_manager.dart';
 import 'services/pack_manager.dart';
 import 'services/preferences_service.dart';
+import 'services/impostor_pack_manager.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +27,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => PlayerManager()),
         ChangeNotifierProvider(create: (_) => PackManager()),
         ChangeNotifierProvider(create: (_) => PreferencesService()),
+        ChangeNotifierProvider(create: (_) => ImpostorPackManager()),
       ],
       child: const CousinChaosApp(),
     ),

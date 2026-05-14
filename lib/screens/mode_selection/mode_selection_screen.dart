@@ -3,7 +3,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/animations.dart';
 import '../../core/widgets/glass_card.dart';
 import '../truth_or_dare/pack_selection_screen.dart';
-import '../new_modes/impostor_setup_screen.dart';
+import '../new_modes/impostor_mode_setup_screen.dart';
 import '../new_modes/speed_challenge_screen.dart';
 import '../../widgets/disclaimer_dialog.dart';
 
@@ -308,7 +308,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
             DisclaimerDialog.show(context, () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ImpostorSetupScreen()),
+                MaterialPageRoute(builder: (_) => const ImpostorModeSetupScreen()),
               );
             });
           },

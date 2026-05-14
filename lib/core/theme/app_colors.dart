@@ -140,4 +140,16 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  static const LinearGradient truthGradient = LinearGradient(
+    colors: [truthBlue, truthBlueDark],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient dareGradient = LinearGradient(
+    colors: [dareRed, dareRedDark],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }

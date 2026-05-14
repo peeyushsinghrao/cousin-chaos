@@ -1,23 +1,75 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/theme/app_colors.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/impostor_data.dart';
+import '../../core/theme/app_colors.dart';
 import '../../models/impostor_player.dart';
+import '../../screens/new_modes/impostor_custom_pack_list_screen.dart';
 import 'impostor_game_screen.dart';
 
 class ImpostorSetupScreen extends StatefulWidget {
-  final List<ImpostorPlayer> players;
+  final int playerCount;
+  final int impostorCount;
+  final bool timeLimitEnabled;
+  final int? timeLimitSeconds;
 
-  const ImpostorSetupScreen({super.key, required this.players});
+  const ImpostorSetupScreen({
+    super.key,
+    required this.playerCount,
+    required this.impostorCount,
+    this.timeLimitEnabled = true,
+    this.timeLimitSeconds,
+  });
 
   @override
   State<ImpostorSetupScreen> createState() => _ImpostorSetupScreenState();
 }
 
 class _ImpostorSetupScreenState extends State<ImpostorSetupScreen> {
-  final List<String> _categories = ImpostorData.categories.keys.toList();
+  late final List<ImpostorPlayer> _players;
+  final List<String> _categories = ['Custom Pack', ...ImpostorData.categories.keys.toList()];
+
+  @override
+  void initState() {
+    super.initState();
+    _players = List.generate(
+      widget.playerCount,
+      (index) => ImpostorPlayer(id: 'player_${index + 1}', name: 'Player ${index + 1}'),
+    );
+  }
+
+  void _openCategory(String category) {
+    HapticFeedback.lightImpact();
+
+    if (category == 'Custom Pack') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ImpostorCustomPackListScreen(
+            players: _players,
+            impostorCount: widget.impostorCount,
+            timeLimitEnabled: widget.timeLimitEnabled,
+            timeLimitSeconds: widget.timeLimitSeconds,
+          ),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ImpostorGameScreen(
+          category: category,
+          players: _players,
+          impostorCount: widget.impostorCount,
+          timeLimitEnabled: widget.timeLimitEnabled,
+          timeLimitSeconds: widget.timeLimitSeconds,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +83,7 @@ class _ImpostorSetupScreenState extends State<ImpostorSetupScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'IMPOSTOR MODE',
+          'SELECT CATEGORY',
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w800,
@@ -56,60 +108,66 @@ class _ImpostorSetupScreenState extends State<ImpostorSetupScreen> {
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: Text(
-                'SELECT CATEGORY',
+                'Choose the theme for your game:',
                 style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                   color: Colors.white,
-                  letterSpacing: 1,
                 ),
               ),
             ),
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 itemCount: _categories.length,
                 itemBuilder: (context, index) {
                   final category = _categories[index];
-                  return FadeInUp(
-                    delay: Duration(milliseconds: 50 * (index % 10)),
-                    child: GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ImpostorGameScreen(
-                              category: category,
-                              players: widget.players,
+                  final isCustom = category == 'Custom Pack';
+
+                  return GestureDetector(
+                    onTap: () => _openCategory(category),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.neonPink.withAlpha(50)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isCustom ? Icons.folder_open : Icons.label,
+                            color: AppColors.neonPink,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  category,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  isCustom
+                                      ? 'Manage saved custom word packs.'
+                                      : '${ImpostorData.categories[category]?.length ?? 0} words',
+                                  style: GoogleFonts.poppins(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.neonPink.withAlpha(50)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                category,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            Icon(Icons.arrow_forward_ios_rounded, color: AppColors.neonPink, size: 16),
-                          ],
-                        ),
+                          const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.neonPink, size: 18),
+                        ],
                       ),
                     ),
                   );

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:uuid/uuid.dart';
 import '../../core/theme/app_colors.dart';
-import '../../models/impostor_player.dart';
-import 'impostor_game_screen.dart';
+import 'impostor_setup_screen.dart';
 
 class ImpostorPlayersScreen extends StatefulWidget {
   const ImpostorPlayersScreen({super.key});
@@ -14,39 +12,47 @@ class ImpostorPlayersScreen extends StatefulWidget {
 }
 
 class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
-  final _uuid = const Uuid();
-  final List<ImpostorPlayer> _players = [];
+  int _playerCount = 5;
+  int _impostorCount = 1;
   bool _timeLimitEnabled = true;
   int _timeLimitSeconds = 300;
 
-  @override
-  void initState() {
-    super.initState();
-    _players.addAll(List.generate(3, (index) => ImpostorPlayer(
-      id: _uuid.v4(), name: 'Player ${index + 1}',
-    )));
-  }
-
-  void _addPlayer() {
-    if (_players.length >= 20) return;
+  void _adjustPlayerCount(int delta) {
+    final nextCount = _playerCount + delta;
+    if (nextCount < 3 || nextCount > 20) return;
     setState(() {
-      _players.add(ImpostorPlayer(id: _uuid.v4(), name: 'Player ${_players.length + 1}'));
+      _playerCount = nextCount;
+      _impostorCount = _recommendedImpostorCount(_playerCount);
     });
   }
 
-  void _removePlayer(int index) {
-    if (_players.length <= 3) return;
+  void _adjustImpostorCount(int delta) {
+    final nextCount = _impostorCount + delta;
+    if (nextCount < 1 || nextCount >= _playerCount) return;
     setState(() {
-      _players.removeAt(index);
+      _impostorCount = nextCount;
     });
   }
 
-  void _startGame() {
-    if (_players.length < 3) return;
+  int _recommendedImpostorCount(int playerCount) {
+    if (playerCount <= 6) return 1;
+    if (playerCount <= 9) return 2;
+    if (playerCount <= 12) return 3;
+    if (playerCount <= 15) return 4;
+    if (playerCount <= 18) return 5;
+    return 6;
+  }
+
+  void _openSetup() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ImpostorSetupScreen(players: _players),
+        builder: (_) => ImpostorSetupScreen(
+          playerCount: _playerCount,
+          impostorCount: _impostorCount,
+          timeLimitEnabled: _timeLimitEnabled,
+          timeLimitSeconds: _timeLimitSeconds,
+        ),
       ),
     );
   }
@@ -63,7 +69,7 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'IMPOSTOR PLAYERS',
+          'IMPOSTOR SETUP',
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w800,
@@ -78,125 +84,151 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Customize players', style: GoogleFonts.poppins(
-              fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white,
-            )),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _players.length,
-                itemBuilder: (context, index) {
-                  final player = _players[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppColors.surfaceBright),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            initialValue: player.name,
-                            style: GoogleFonts.poppins(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Player ${index + 1}',
-                              labelStyle: GoogleFonts.poppins(color: AppColors.textSecondary),
-                              border: InputBorder.none,
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                player.name = value.isEmpty ? 'Player ${index + 1}' : value;
-                              });
-                            },
-                          ),
-                        ),
-                        if (_players.length > 3)
-                          IconButton(
-                            onPressed: () => _removePlayer(index),
-                            icon: const Icon(Icons.close_rounded, color: Colors.white),
-                          ),
-                      ],
-                    ),
-                  );
-                },
+            Text(
+              'Party Setup',
+              style: GoogleFonts.poppins(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
               ),
             ),
+            const SizedBox(height: 12),
+            Text(
+              'Choose how many players are joining, how many impostors will be hidden, and whether the timer is on.',
+              style: GoogleFonts.poppins(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 28),
+            _buildCountCard(
+              label: 'Players',
+              value: _playerCount.toString(),
+              icon: Icons.group,
+              onDecrease: () => _adjustPlayerCount(-1),
+              onIncrease: () => _adjustPlayerCount(1),
+            ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _addPlayer,
-                    child: Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: AppColors.neonPink,
-                        borderRadius: BorderRadius.circular(20),
+            _buildCountCard(
+              label: 'Impostors',
+              value: _impostorCount.toString(),
+              icon: Icons.local_fire_department,
+              onDecrease: () => _adjustImpostorCount(-1),
+              onIncrease: () => _adjustImpostorCount(1),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.surfaceBright),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.timer, color: AppColors.neonPink),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Discussion Timer',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
                       ),
-                      child: Center(
-                        child: Text('ADD PLAYER', style: GoogleFonts.poppins(
-                          fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white,
-                        )),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _timeLimitEnabled ? '${_timeLimitSeconds ~/ 60} minutes' : 'Timer disabled',
+                        style: GoogleFonts.poppins(color: AppColors.textSecondary),
                       ),
-                    ),
+                      Switch(
+                        value: _timeLimitEnabled,
+                        activeColor: AppColors.neonPink,
+                        onChanged: (value) => setState(() => _timeLimitEnabled = value),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Text('${_players.length}/20', style: GoogleFonts.poppins(
-                    fontSize: 14, color: AppColors.textSecondary,
-                  )),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 24),
-            SwitchListTile(
-              value: _timeLimitEnabled,
-              activeColor: AppColors.neonPink,
-              title: Text('Enable discussion timer', style: GoogleFonts.poppins(
-                color: Colors.white, fontWeight: FontWeight.w700,
-              )),
-              subtitle: Text('${_timeLimitSeconds ~/ 60} minutes', style: GoogleFonts.poppins(
-                color: AppColors.textSecondary,
-              )),
-              onChanged: (value) => setState(() => _timeLimitEnabled = value),
-            ),
-            if (_timeLimitEnabled) ...[
-              Slider(
-                value: _timeLimitSeconds.toDouble(),
-                min: 60,
-                max: 600,
-                divisions: 9,
-                activeColor: AppColors.neonPink,
-                label: '${_timeLimitSeconds ~/ 60} min',
-                onChanged: (value) => setState(() => _timeLimitSeconds = value.toInt()),
-              ),
-            ],
-            const SizedBox(height: 16),
             GestureDetector(
-              onTap: _players.length >= 3 ? _startGame : null,
+              onTap: _openSetup,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.surfaceBright),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Choose Category',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tap to pick the themed word category or use your own custom pack.',
+                            style: GoogleFonts.poppins(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.neonPink, size: 20),
+                  ],
+                ),
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: _openSetup,
               child: Container(
                 width: double.infinity,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: _players.length >= 3 ? AppColors.neonPink : AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.neonPink,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.neonPink.withOpacity(0.35),
+                      blurRadius: 30,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
                 ),
                 child: Center(
                   child: Text(
-                    'START GAME',
+                    'CONTINUE TO CATEGORY',
                     style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
                       color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
                     ),
                   ),
                 ),
@@ -204,6 +236,74 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCountCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required VoidCallback onDecrease,
+    required VoidCallback onIncrease,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.surfaceBright),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.neonPink.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Icon(icon, color: AppColors.neonPink),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(value, style: GoogleFonts.poppins(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              _buildSmallControl(Icons.remove, onDecrease),
+              const SizedBox(width: 12),
+              _buildSmallControl(Icons.add, onIncrease),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallControl(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.surfaceBright),
+        ),
+        child: Icon(icon, color: AppColors.primary),
       ),
     );
   }

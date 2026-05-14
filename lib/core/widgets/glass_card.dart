@@ -9,7 +9,7 @@ class GlassCard extends StatelessWidget {
   final double? borderRadius;
   final VoidCallback? onTap;
   final bool isInteractive;
-  final BoxShadow? boxShadow;
+  final List<BoxShadow>? boxShadow;
   final Gradient? borderGradient;
   final double? blur;
 
@@ -95,7 +95,7 @@ class GlassButton extends StatelessWidget {
   final double? height;
   final double? borderRadius;
   final bool isPrimary;
-  final BoxShadow? boxShadow;
+  final List<BoxShadow>? boxShadow;
 
   const GlassButton({
     super.key,
