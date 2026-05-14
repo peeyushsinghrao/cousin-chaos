@@ -1,0 +1,155 @@
+const List<String> inspirationPrompts = [
+  'Something you have done that nobody in this room knows about',
+  'A place you have been that would surprise people',
+  'A food you secretly hate that everyone assumes you like',
+  'Something embarrassing you did for someone you liked',
+  'A lie you told a teacher that actually worked',
+  'A skill you have that nobody would guess',
+  'The most money you have spent on something ridiculous',
+  'Something you believed was true until embarrassingly recently',
+  'A celebrity you have been close to or almost met',
+  'The most dramatic thing that has ever happened to you on holiday',
+  'A phase you went through that you never talk about',
+  'Something you have never done that most people your age have',
+  'The worst job you have ever had or almost had',
+  'A fear that most people would find completely ridiculous',
+  'Something you did as a child that got you in serious trouble',
+  'A habit you have that would surprise everyone here',
+  'The most spontaneous thing you have ever done',
+  'Something you are surprisingly good at that has never come up',
+  'A crush you had that nobody in this room knows about',
+  'The most embarrassing thing that has happened to you on public transport',
+  'Something you have lied about on more than one occasion',
+  'A near miss or close call you have had that sounds made up',
+  'The strangest dream you remember clearly',
+  'Something you have done alone that you would never admit to usually',
+  'A strong opinion you have that you know is controversial',
+  'Something you regret buying that cost more than it should have',
+  'A time you got away with something you absolutely should not have',
+  'The most ridiculous argument you have ever had with someone',
+  'Something you have googled that you would never say out loud',
+  'A time you did something brave that nobody saw',
+  'An experience you had at school that still makes you cringe',
+  'Something weird you used to eat as a child',
+  'A rule you make for yourself that you break constantly',
+  'The most unexpected thing you have ever found out about yourself',
+  'Something you have done more than once that you told yourself was a one off',
+  'A hobby or interest you had that lasted less than a week',
+  'The worst advice you have ever genuinely followed',
+  'Something embarrassing that happened to you at a family event',
+  'A time you completely misread a social situation',
+  'Something you own that you have never used and never will',
+  'The most impulsive decision you have ever made that somehow worked out',
+  'A compliment you received that you still think about',
+  'Something you have never told your parents and never plan to',
+  'The most ridiculous thing you have ever been told off for',
+  'A time you were completely convinced you were right and were not',
+  'Something that happened on a night out that you only found out about later',
+  'A text or message you sent that you wish you could permanently delete',
+  'Something you practised in the mirror before doing in real life',
+  'An obsession you had at some point that you cannot explain',
+  'The most embarrassing reason you have cried that you have never admitted',
+];
+
+const List<Map<String, dynamic>> exampleSets = [
+  {
+    'statements': ['I once skipped an entire week of school and my parents never found out', 'I have met a member of a globally famous band backstage', 'I have never eaten a McDonald\'s in my life'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I failed my driving test four times before passing', 'I once slept through an entire 8-hour flight and missed my stop', 'I cried watching a dog food advert'],
+    'lieIndex': 1,
+  },
+  {
+    'statements': ['I have a scar with a story I tell differently every time', 'I once got a standing ovation at a karaoke night from strangers', 'I have never been on a rollercoaster'],
+    'lieIndex': 1,
+  },
+  {
+    'statements': ['I sent a voice note to the wrong person and it was about them', 'I once pretended to be sick for a whole week to avoid one specific person', 'I have won money at a casino'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have been in the background of a music video', 'I once ate an entire pizza by myself and told no one', 'I have never had a filling at the dentist'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have broken a bone doing something I was not supposed to be doing', 'I once convinced my whole class of something completely made up', 'I have been to over 15 countries'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have been in a proper fist fight and won', 'I once got locked out of my house and climbed in through a window', 'I speak a second language well enough to have a full conversation'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have a hidden talent for impressions that I only do alone', 'I once went on a date not realising it was a date until it was over', 'I have never been stung by a bee'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I once accidentally ended up at the wrong event and stayed for two hours', 'I have a genuine phobia of something most people find completely harmless', 'I have read over 100 books in my life'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have been on live television without planning to be', 'I once went a full month without spending any money on anything except food', 'I have been to every continent except one'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I practised a speech in the mirror so many times I gave it to someone who did not ask', 'I have accidentally called a teacher mum and then had to switch schools', 'I once won a competition I entered as a joke'],
+    'lieIndex': 1,
+  },
+  {
+    'statements': ['I have deleted and redownloaded the same app over ten times', 'I once spent an entire day pretending to be from a different country to a stranger', 'I have never been in a car accident of any kind'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have a playlist I have been building since I was 14 that I have never shown anyone', 'I once got into an argument with someone online and found out they were someone I knew in real life', 'I have been on a first date that lasted less than 10 minutes'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have been told I look like a celebrity on more than three separate occasions', 'I once spent a whole weekend pretending I was on holiday to avoid a social event', 'I have never had a nightmare in my life'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I once left a country in a panic and never went back', 'I have a genuine skill that I have never had any reason to use in public', 'I have broken the same bone twice'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have been in a relationship that lasted less than a week', 'I once found a significant amount of money and kept it', 'I have never pulled an all-nighter in my life'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I once convinced someone I was a professional in a field I know nothing about', 'I have a recurring dream that I have had since childhood', 'I have never lied on a job application'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I once fell asleep at a concert I paid a lot of money for', 'I have been asked to leave a public place', 'I have an unusual collection that I have never shown anyone outside my family'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have sent a message to the wrong person that completely changed a relationship', 'I once ate something I was allergic to at a dinner and said nothing to be polite', 'I have run a half marathon'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have ghosted someone I see regularly and we both pretend it never happened', 'I once stayed at a party for 6 hours without talking to a single person I did not know', 'I have appeared in a published article or news story'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I once forgot someone\'s name mid-conversation after knowing them for two years', 'I have a voice note in my phone that I recorded for someone and never sent', 'I have never been nervous before a presentation or public speaking moment'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have eaten food I dropped on the floor when nobody was watching', 'I once replied to a work email with something meant for a completely different chat', 'I have won an argument with a stranger on the internet and felt nothing'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have a word I cannot spell no matter how many times I look it up', 'I once pretended not to see someone I know very well in public and it worked', 'I have never cried at a film in my life'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I have started a conversation with the wrong person thinking they were someone else and committed to it', 'I once gave a fake name at a coffee shop and regretted it immediately', 'I have a completely irrational fear of something most people find completely normal'],
+    'lieIndex': 2,
+  },
+  {
+    'statements': ['I once laughed so hard at something inappropriate that I could not stop for an uncomfortable amount of time', 'I have accidentally liked something on social media while stalking someone and immediately had a panic attack', 'I have never told a lie that I felt guilty about'],
+    'lieIndex': 2,
+  },
+];

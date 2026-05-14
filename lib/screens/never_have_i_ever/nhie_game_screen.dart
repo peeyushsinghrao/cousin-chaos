@@ -9,6 +9,7 @@ import '../../core/constants/nhie_data.dart';
 import '../../services/player_manager.dart';
 import '../../services/api_service.dart';
 import '../../models/pack.dart';
+import '../../models/player.dart';
 import '../../services/pack_manager.dart';
 
 enum NhieMode { classic, wild, party, chaos }
@@ -23,6 +24,7 @@ class NeverHaveIEverScreen extends StatefulWidget {
 class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
     with TickerProviderStateMixin {
   final List<Map<String, dynamic>> _statements = [];
+  late final List<Player> _gamePlayers;
   int _currentIndex = 0;
   int _currentPlayerIndex = 0;
   bool _isRevealed = false;
@@ -34,6 +36,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
   @override
   void initState() {
     super.initState();
+    _gamePlayers = List.from(context.read<PlayerManager>().players);
     _glowController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000))
       ..repeat(reverse: true);
     _flipController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
@@ -78,7 +81,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
     HapticFeedback.lightImpact();
     setState(() {
       _currentIndex++;
-      _currentPlayerIndex = (_currentPlayerIndex + 1) % pm.players.length;
+      _currentPlayerIndex = (_currentPlayerIndex + 1) % _gamePlayers.length;
       _isRevealed = false;
       _isLegendary = false;
     });
@@ -122,8 +125,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
 
   @override
   Widget build(BuildContext context) {
-    final pm = context.watch<PlayerManager>();
-    final player = pm.players[_currentPlayerIndex % pm.players.length];
+    final player = _gamePlayers[_currentPlayerIndex % _gamePlayers.length];
 
     return Scaffold(
       body: Container(
@@ -232,9 +234,9 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: pm.players.length,
+        itemCount: _gamePlayers.length,
         itemBuilder: (_, i) {
-          final p = pm.players[i];
+          final p = _gamePlayers[i];
           final isActive = p.name == currentName;
           return AnimatedContainer(
             duration: const Duration(milliseconds: 300),

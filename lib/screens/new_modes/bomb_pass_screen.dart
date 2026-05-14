@@ -24,16 +24,16 @@ class _BombPassScreenState extends State<BombPassScreen> {
   int _timeUntilExplosion = 0;
 
   final List<String> _tasks = [
-    'Name a fruit, then pass.',
-    'Say a color, then pass.',
-    'Name a movie, then pass.',
-    'Say an animal, then pass.',
-    'Name a country, then pass.',
-    'Say a brand name, then pass.',
-    'Make a funny noise, then pass.',
-    'Name a video game, then pass.',
-    'Say a girl\'s name, then pass.',
-    'Say a boy\'s name, then pass.',
+    'Name 3 countries starting with the same letter',
+    'Do your best celebrity impression',
+    'Say the alphabet backwards as fast as you can',
+    'Tell an embarrassing story in 10 seconds',
+    'Do 10 jumping jacks right now',
+    'Speak in an accent until the next turn',
+    'Name 5 movies in 5 seconds',
+    'Sing the first line of any song',
+    'Do your best robot dance for 5 seconds',
+    'Make everyone laugh without speaking',
   ];
 
   @override

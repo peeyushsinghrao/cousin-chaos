@@ -4,10 +4,13 @@ import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/impostor_data.dart';
+import '../../models/impostor_player.dart';
 import 'impostor_game_screen.dart';
 
 class ImpostorSetupScreen extends StatefulWidget {
-  const ImpostorSetupScreen({super.key});
+  final List<ImpostorPlayer> players;
+
+  const ImpostorSetupScreen({super.key, required this.players});
 
   @override
   State<ImpostorSetupScreen> createState() => _ImpostorSetupScreenState();
@@ -76,7 +79,10 @@ class _ImpostorSetupScreenState extends State<ImpostorSetupScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => ImpostorGameScreen(category: category),
+                            builder: (_) => ImpostorGameScreen(
+                              category: category,
+                              players: widget.players,
+                            ),
                           ),
                         );
                       },

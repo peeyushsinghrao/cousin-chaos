@@ -77,7 +77,10 @@ class _FreezeModeScreenState extends State<FreezeModeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isFrozen) {
-      return _buildFrozenScreen();
+      return PopScope(
+        canPop: false,
+        child: _buildFrozenScreen(),
+      );
     }
 
     return Scaffold(

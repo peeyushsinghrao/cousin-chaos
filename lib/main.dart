@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
-import 'screens/home/home_screen.dart';
+import 'screens/splash/splash_screen.dart';
 import 'services/player_manager.dart';
 import 'services/pack_manager.dart';
 import 'services/preferences_service.dart';
@@ -41,7 +41,7 @@ class CousinChaosApp extends StatelessWidget {
       title: 'Cousin Chaos',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }

@@ -43,7 +43,7 @@ class PlayerManager extends ChangeNotifier {
   }
 
   void addPlayer() {
-    if (_players.length >= 10) return;
+    if (_players.length >= 20) return;
     final newNumber = _players.length + 1;
     _players.add(Player(id: _uuid.v4(), name: 'Player $newNumber'));
     _savePlayers();
@@ -61,6 +61,15 @@ class PlayerManager extends ChangeNotifier {
     final index = _players.indexWhere((p) => p.id == id);
     if (index != -1) {
       _players[index].name = newName.isEmpty ? 'Player ${index + 1}' : newName;
+      _savePlayers();
+      notifyListeners();
+    }
+  }
+
+  void updatePlayerSkipTokens(String id, int skipTokens) {
+    final index = _players.indexWhere((p) => p.id == id);
+    if (index != -1) {
+      _players[index].skipTokens = skipTokens;
       _savePlayers();
       notifyListeners();
     }

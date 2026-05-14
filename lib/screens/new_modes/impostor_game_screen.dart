@@ -1,21 +1,28 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import 'dart:math';
-import 'dart:async';
-import '../../core/theme/app_colors.dart';
-import '../../services/player_manager.dart';
-import '../../models/player.dart';
 import '../../core/constants/impostor_data.dart';
+import '../../core/theme/app_colors.dart';
+import '../../models/impostor_player.dart';
 
 enum ImpostorPhase { passDevice, reveal, discussion, vote, result }
 
 class ImpostorGameScreen extends StatefulWidget {
   final String category;
+  final int? timeLimitSeconds;
+  final bool timeLimitEnabled;
+  final List<ImpostorPlayer> players;
 
-  const ImpostorGameScreen({super.key, required this.category});
+  const ImpostorGameScreen({
+    super.key,
+    required this.category,
+    required this.players,
+    this.timeLimitSeconds,
+    this.timeLimitEnabled = true,
+  });
 
   @override
   State<ImpostorGameScreen> createState() => _ImpostorGameScreenState();
@@ -25,7 +32,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
   final Random _random = Random();
   ImpostorPhase _currentPhase = ImpostorPhase.passDevice;
   
-  List<Player> _players = [];
+  List<ImpostorPlayer> _players = [];
   int _currentPlayerIndex = 0;
   
   List<String> _impostorIds = [];
@@ -37,7 +44,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
   int _timeLeft = 300; // 5 minutes default
   Timer? _discussionTimer;
 
-  Player? _votedPlayer;
+  ImpostorPlayer? _votedPlayer;
 
   @override
   void initState() {
@@ -54,8 +61,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
   }
 
   void _initializeGame() {
-    final players = context.read<PlayerManager>().players;
-    if (players.length < 3) {
+    if (widget.players.length < 3) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Impostor Mode requires at least 3 players!'))
       );
@@ -63,12 +69,19 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
       return;
     }
     
-    _players = List.from(players)..shuffle();
+    _players = List.from(widget.players)..shuffle();
+    _currentPlayerIndex = 0;
     
-    int impostorCount = _players.length <= 4 ? 1 : 2;
+    // Set timer based on widget parameters
+    if (widget.timeLimitEnabled && widget.timeLimitSeconds != null) {
+      _timeLeft = widget.timeLimitSeconds!;
+    } else {
+      _timeLeft = 300; // Default 5 minutes
+    }
     
+    int impostorCount = _getRecommendedImpostorCount(_players.length);
     final selectedImpostors = List.from(_players)..shuffle();
-    _impostorIds = selectedImpostors.take(impostorCount).map<String>((p) => p.id as String).toList();
+    _impostorIds = selectedImpostors.take(impostorCount).map((p) => p.id as String).toList();
     
     final words = ImpostorData.categories[widget.category] ?? ['Mystery'];
     _secretWord = words[_random.nextInt(words.length)];
@@ -88,6 +101,17 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
     });
   }
 
+  int _getRecommendedImpostorCount(int playerCount) {
+    if (playerCount <= 7) return 1;
+    if (playerCount <= 9) return 2;
+    if (playerCount <= 11) return 3;
+    if (playerCount <= 13) return 4;
+    if (playerCount <= 15) return 5;
+    if (playerCount <= 17) return 6;
+    if (playerCount <= 19) return 7;
+    return 8;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_players.isEmpty) return const Scaffold(backgroundColor: AppColors.background);
@@ -99,7 +123,10 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () async {
+            final shouldLeave = await _showLeaveDialog();
+            if (shouldLeave == true && context.mounted) Navigator.pop(context);
+          },
         ),
         title: Text(
           'IMPOSTOR',
@@ -291,6 +318,110 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
     });
   }
 
+  Future<bool?> _showLeaveDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Leave Game?',
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        content: Text(
+          'Your progress will be lost. Are you sure?',
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'CANCEL',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'LEAVE',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.dareRed,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showVoteConfirmationDialog(ImpostorPlayer player) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Vote to Eliminate?',
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to eliminate ${player.name}? This will end the game.',
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'CANCEL',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _votedPlayer = player;
+                _currentPhase = ImpostorPhase.result;
+              });
+            },
+            child: Text(
+              'ELIMINATE',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.dareRed,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDiscussionPhase() {
     final m = _timeLeft ~/ 60;
     final s = _timeLeft % 60;
@@ -376,10 +507,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen> {
                 return GestureDetector(
                   onTap: () {
                     HapticFeedback.heavyImpact();
-                    setState(() {
-                      _votedPlayer = player;
-                      _currentPhase = ImpostorPhase.result;
-                    });
+                        _showVoteConfirmationDialog(player);
                   },
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),

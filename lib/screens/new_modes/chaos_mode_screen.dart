@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import 'dart:async';
 import '../../core/theme/app_colors.dart';
+import '../../core/constants/modes_data.dart';
 
 enum ChaosEventType { dare, timer, freeze, punishment, everyone, rapidFire }
 
@@ -29,14 +30,21 @@ class _ChaosModeScreenState extends State<ChaosModeScreen> {
   ChaosEvent? _currentEvent;
   bool _isFlashing = false;
 
-  final List<ChaosEvent> _events = [
-    ChaosEvent(ChaosEventType.dare, 'DARE!', 'Do a backflip or drink!', AppColors.dareRed),
-    ChaosEvent(ChaosEventType.timer, 'SPEED!', 'Name 5 animals in 5 seconds. GO!', AppColors.neonYellow),
-    ChaosEvent(ChaosEventType.freeze, 'FREEZE!', 'Nobody move for 10 seconds. First to move loses.', AppColors.truthBlue),
-    ChaosEvent(ChaosEventType.punishment, 'PUNISHMENT!', 'The person holding the phone takes a penalty.', AppColors.neonPink),
-    ChaosEvent(ChaosEventType.everyone, 'EVERYONE DRINKS!', 'Cheers to chaos!', AppColors.neonGreen),
-    ChaosEvent(ChaosEventType.rapidFire, 'RAPID FIRE!', 'Ask the person to your left 3 questions fast.', AppColors.neonOrange),
-  ];
+  final List<ChaosEvent> _events = ModeData.chaosEvents.map((data) {
+    ChaosEventType type = ChaosEventType.dare;
+    if (data.title == 'SPEED!') {
+      type = ChaosEventType.timer;
+    } else if (data.title == 'FREEZE!') {
+      type = ChaosEventType.freeze;
+    } else if (data.title == 'PUNISHMENT!') {
+      type = ChaosEventType.punishment;
+    } else if (data.title == 'EVERYONE DRINKS!') {
+      type = ChaosEventType.everyone;
+    } else if (data.title == 'RAPID FIRE!') {
+      type = ChaosEventType.rapidFire;
+    }
+    return ChaosEvent(type, data.title, data.description, data.color);
+  }).toList();
 
   @override
   void initState() {
