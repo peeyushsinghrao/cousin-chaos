@@ -77,7 +77,7 @@ class AppColors {
   static const Color neonGreen = Color(0xFF39FF14);
   static const Color neonYellow = Color(0xFFF5C518);
   static const Color neonOrange = Color(0xFFFF6B35);
-  static const Color neonPink = Color(0xFFFFB3B5);
+  static const Color neonPink = Color(0xFFFF2D92);
   static const Color neonCyan = Color(0xFF92DBFF);
   
   // Text Colors (mapped from design system)

@@ -37,20 +37,20 @@ class GlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(effectiveBorderRadius),
         gradient: LinearGradient(
           colors: [
-            AppColors.surfaceContainer.withOpacity(0.05),
-            AppColors.surfaceContainer.withOpacity(0.02),
+            AppColors.surfaceContainer.withAlpha(13),
+            AppColors.surfaceContainer.withAlpha(5),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withAlpha(26),
           width: 1,
         ),
         boxShadow: boxShadow ??
             [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withAlpha(26),
                 blurRadius: 40,
                 spreadRadius: -10,
                 offset: const Offset(0, 20),
@@ -66,7 +66,7 @@ class GlassCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(effectiveBorderRadius),
               gradient: borderGradient ?? AppColors.glassBorderGradient,
               border: Border.all(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withAlpha(26),
                 width: 1,
               ),
             ),
@@ -122,7 +122,7 @@ class GlassButton extends StatelessWidget {
           boxShadow: boxShadow ??
               [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.5),
+                  color: AppColors.primary.withAlpha(128),
                   blurRadius: 30,
                   spreadRadius: 0,
                 ),

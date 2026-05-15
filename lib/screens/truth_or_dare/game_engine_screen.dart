@@ -51,7 +51,7 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
       final playerNames = context.read<PlayerManager>().players.map((p) => p.name).toList();
       final items = List<String>.from(playerNames);
       if (Random().nextDouble() < 0.20) {
-        items.add('Everyone 🎲');
+        items.add('Everyone');
       }
       items.shuffle();
       setState(() => _currentWheelItems = items);

@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../widgets/player_avatar.dart';
-import '../../widgets/glass_card.dart';
+import '../../core/widgets/glass_card.dart';
 import '../../services/player_manager.dart';
 
 class CrewScreen extends StatelessWidget {

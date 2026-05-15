@@ -77,7 +77,6 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
   }
 
   void _nextStatement() {
-    final pm = context.read<PlayerManager>();
     HapticFeedback.lightImpact();
     setState(() {
       _currentIndex++;
@@ -142,7 +141,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
               const SizedBox(height: 4),
               _buildModeSelector(),
               const SizedBox(height: 8),
-              _buildPlayerStrip(pm, player.name),
+              _buildPlayerStrip(context.read<PlayerManager>(), player.name),
               const SizedBox(height: 8),
               _buildPlayerTurn(player.name),
               Expanded(child: _buildStatementCard()),

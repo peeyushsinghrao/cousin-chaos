@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
-import '../../widgets/glass_card.dart';
+import '../../core/widgets/glass_card.dart';
 import '../../widgets/neon_button.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../home/home_screen.dart';
@@ -92,8 +92,8 @@ class _SplashScreenState extends State<SplashScreen>
             end: Alignment.bottomRight,
             colors: [
               AppColors.background,
-              AppColors.primary.withOpacity(0.15),
-              AppColors.secondary.withOpacity(0.15),
+              AppColors.primary.withAlpha(38),
+              AppColors.secondary.withAlpha(38),
               AppColors.background,
             ],
           ),
@@ -143,11 +143,11 @@ class _SplashScreenState extends State<SplashScreen>
             height: 1.1,
             shadows: [
               Shadow(
-                color: AppColors.primary.withOpacity(0.8),
+                color: AppColors.primary.withAlpha(204),
                 blurRadius: 20,
               ),
               Shadow(
-                color: AppColors.primary.withOpacity(0.4),
+                color: AppColors.primary.withAlpha(102),
                 blurRadius: 40,
               ),
             ],
@@ -178,11 +178,11 @@ class _SplashScreenState extends State<SplashScreen>
         color: AppColors.primary,
         shadows: [
           Shadow(
-            color: AppColors.primary.withOpacity(0.8),
+            color: AppColors.primary.withAlpha(204),
             blurRadius: 20,
           ),
           Shadow(
-            color: AppColors.primary.withOpacity(0.4),
+            color: AppColors.primary.withAlpha(102),
             blurRadius: 40,
           ),
         ],
@@ -197,10 +197,10 @@ class _SplashScreenState extends State<SplashScreen>
         Container(
           height: 6,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withAlpha(13),
             borderRadius: BorderRadius.circular(3),
             border: Border.all(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withAlpha(26),
               width: 1,
             ),
           ),
@@ -252,7 +252,7 @@ class _SplashScreenState extends State<SplashScreen>
             Text(
               'Synchronizing Chaos...',
               style: GoogleFonts.plusJakartaSans(
-                color: AppColors.textSecondary.withOpacity(0.5),
+                color: AppColors.textSecondary.withAlpha(128),
                 fontSize: 12,
               ),
             ),

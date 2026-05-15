@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
-import '../../widgets/glass_card.dart';
+import '../../core/widgets/glass_card.dart';
 import '../../widgets/player_avatar.dart';
 import '../../services/session_service.dart';
 
@@ -76,7 +76,7 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.archive_outlined, size: 64, color: AppColors.textSecondary.withOpacity(0.5)),
+                          Icon(Icons.archive_outlined, size: 64, color: AppColors.textSecondary.withAlpha(128)),
                           const SizedBox(height: 16),
                           Text('No chaos recorded yet',
                               style: GoogleFonts.plusJakartaSans(color: AppColors.textSecondary, fontSize: 16)),
@@ -102,7 +102,7 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
                                       height: 44,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: AppColors.primary.withOpacity(0.18),
+                                        color: AppColors.primary.withAlpha(46),
                                       ),
                                       child: const Icon(Icons.sports_esports_rounded, color: Colors.white),
                                     ),

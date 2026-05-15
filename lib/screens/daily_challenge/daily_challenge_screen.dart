@@ -55,7 +55,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: AppColors.secondary.withOpacity(0.15),
+                        color: AppColors.secondary.withAlpha(38),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text('DAILY DARE',
@@ -83,7 +83,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
                           margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: index < _streak ? AppColors.gold : AppColors.surface.withOpacity(0.4),
+                            color: index < _streak ? AppColors.gold : AppColors.surface.withAlpha(102),
                           ),
                         ),
                       ),
@@ -135,7 +135,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
                       borderRadius: BorderRadius.circular(28),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.gold.withOpacity(0.35),
+                          color: AppColors.gold.withAlpha(89),
                           blurRadius: 24,
                           spreadRadius: 0,
                         ),
@@ -169,7 +169,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       height: 10,
                       decoration: BoxDecoration(
-                        color: index < _streak ? AppColors.gold : Colors.white.withOpacity(0.08),
+                        color: index < _streak ? AppColors.gold : Colors.white.withAlpha(20),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),

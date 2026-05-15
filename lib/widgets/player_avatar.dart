@@ -65,7 +65,7 @@ class PlayerAvatar extends StatelessWidget {
 
   Widget _buildDefaultAvatar() {
     return Container(
-      color: color.withOpacity(0.3),
+      color: color.withAlpha(76),
       child: Center(
         child: Text(
           playerName.isNotEmpty ? playerName[0].toUpperCase() : '?',

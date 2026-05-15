@@ -12,7 +12,7 @@ class ImpostorAnimations {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: glowColor.withOpacity(0.5),
+            color: glowColor.withAlpha(128),
             blurRadius: glowRadius,
             spreadRadius: -5,
           ),
@@ -68,8 +68,8 @@ class ImpostorGradients {
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        const Color(0xFFFF0000).withOpacity(0.8),
-        const Color(0xFF8B0000).withOpacity(0.6),
+        const Color(0xFFFF0000).withAlpha(204),
+        const Color(0xFF8B0000).withAlpha(153),
       ],
     );
   }
@@ -79,8 +79,8 @@ class ImpostorGradients {
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        const Color(0xFF00D084).withOpacity(0.8),
-        const Color(0xFF00A366).withOpacity(0.6),
+        const Color(0xFF00D084).withAlpha(204),
+        const Color(0xFF00A366).withAlpha(153),
       ],
     );
   }
@@ -90,8 +90,8 @@ class ImpostorGradients {
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        Colors.white.withOpacity(0.1),
-        Colors.white.withOpacity(0.05),
+        Colors.white.withAlpha(26),
+        Colors.white.withAlpha(13),
       ],
     );
   }

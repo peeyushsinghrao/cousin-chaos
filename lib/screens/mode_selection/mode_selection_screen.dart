@@ -3,7 +3,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/animations.dart';
 import '../../core/widgets/glass_card.dart';
 import '../truth_or_dare/pack_selection_screen.dart';
-import '../new_modes/impostor_mode_setup_screen.dart';
+import '../new_modes/impostor_players_screen.dart';
+import '../../core/navigation/page_transitions.dart';
 import '../new_modes/speed_challenge_screen.dart';
 import '../../widgets/disclaimer_dialog.dart';
 
@@ -70,12 +71,12 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                       ),
                     ),
                   ),
-                ),
                 
                 // BottomNavBar
                 _buildBottomNavBar(),
-              ],
-            ),
+            ],
+          ),
+        ),
           ],
         ),
       ),
@@ -94,10 +95,10 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
               height: 384,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withOpacity(0.05),
+                color: AppColors.primary.withAlpha(13),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.05),
+                    color: AppColors.primary.withAlpha(13),
                     blurRadius: 100,
                   ),
                 ],
@@ -112,10 +113,10 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
               height: 384,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.secondary.withOpacity(0.05),
+                color: AppColors.secondary.withAlpha(13),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.secondary.withOpacity(0.05),
+                    color: AppColors.secondary.withAlpha(13),
                     blurRadius: 100,
                   ),
                 ],
@@ -131,16 +132,16 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.3),
+        color: AppColors.surface.withAlpha(76),
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withAlpha(26),
             width: 1,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withAlpha(128),
             blurRadius: 40,
             spreadRadius: -10,
             offset: const Offset(0, 10),
@@ -165,7 +166,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                   fontSize: 24,
                   shadows: [
                     Shadow(
-                      color: AppColors.primary.withOpacity(0.8),
+                      color: AppColors.primary.withAlpha(204),
                       blurRadius: 10,
                     ),
                   ],
@@ -179,7 +180,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: AppColors.primary.withOpacity(0.5),
+                color: AppColors.primary.withAlpha(128),
                 width: 2,
               ),
             ),
@@ -216,7 +217,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
             letterSpacing: 0.2,
             shadows: [
               Shadow(
-                color: AppColors.primary.withOpacity(0.6),
+                color: AppColors.primary.withAlpha(153),
                 blurRadius: 8,
               ),
             ],
@@ -249,7 +250,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.4),
+                            color: AppColors.primary.withAlpha(102),
                             blurRadius: 15,
                           ),
                         ]
@@ -305,12 +306,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
           buttonText: 'Enter The Void',
           buttonGradient: AppColors.tertiaryGradient,
           onTap: () {
-            DisclaimerDialog.show(context, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ImpostorModeSetupScreen()),
-              );
-            });
+            Navigator.push(context, slideUpRoute(const ImpostorPlayersScreen()));
           },
         ),
         
@@ -356,11 +352,11 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
       child: GlassCard(
         borderRadius: 16,
         padding: const EdgeInsets.all(24),
-        boxShadow: BoxShadow(
-          color: iconColor.withOpacity(0.2),
+        boxShadow: [BoxShadow(
+          color: iconColor.withAlpha(51),
           blurRadius: 15,
           spreadRadius: 0,
-        ),
+        )],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -371,10 +367,10 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.2),
+                    color: iconColor.withAlpha(51),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: iconColor.withOpacity(0.3),
+                      color: iconColor.withAlpha(76),
                       width: 1,
                     ),
                   ),
@@ -392,7 +388,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                         color: AppColors.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: iconColor.withOpacity(0.2),
+                          color: iconColor.withAlpha(51),
                           width: 1,
                         ),
                       ),
@@ -444,11 +440,11 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                 isPrimary: true,
                 borderRadius: 12,
                 gradient: buttonGradient,
-                boxShadow: BoxShadow(
-                  color: iconColor.withOpacity(0.3),
+                boxShadow: [BoxShadow(
+                  color: iconColor.withAlpha(76),
                   blurRadius: 20,
                   spreadRadius: 0,
-                ),
+                )],
                 onPressed: onTap,
                 child: Text(
                   buttonText,
@@ -472,16 +468,16 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
       right: 0,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainer.withOpacity(0.4),
+          color: AppColors.surfaceContainer.withAlpha(102),
           border: Border(
             top: BorderSide(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withAlpha(26),
               width: 1,
             ),
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
+              color: AppColors.primary.withAlpha(76),
               blurRadius: 40,
               spreadRadius: -10,
               offset: const Offset(0, -10),
@@ -539,12 +535,12 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.2) : Colors.transparent,
+          color: isSelected ? AppColors.primary.withAlpha(51) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.4),
+                    color: AppColors.primary.withAlpha(102),
                     blurRadius: 15,
                   ),
                 ]
@@ -555,14 +551,14 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withOpacity(0.7),
+              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withAlpha(178),
               size: 24,
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withOpacity(0.7),
+                color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withAlpha(178),
               ),
             ),
           ],

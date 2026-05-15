@@ -27,12 +27,12 @@ class AppTheme {
   static List<BoxShadow> neonGlow(Color color, {double blurRadius = 20, double spreadRadius = 0}) {
     return [
       BoxShadow(
-        color: color.withOpacity(0.5),
+        color: color.withAlpha(128),
         blurRadius: blurRadius,
         spreadRadius: spreadRadius,
       ),
       BoxShadow(
-        color: color.withOpacity(0.3),
+        color: color.withAlpha(76),
         blurRadius: blurRadius * 2,
         spreadRadius: spreadRadius,
       ),

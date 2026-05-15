@@ -114,7 +114,7 @@ class _PulseGlowAnimationState extends State<PulseGlowAnimation>
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: widget.glowColor.withOpacity(0.6),
+                color: widget.glowColor.withAlpha(153),
                 blurRadius: blur,
                 spreadRadius: 0,
               ),
@@ -246,7 +246,7 @@ class _ShimmerAnimationState extends State<ShimmerAnimation>
               end: Alignment.centerRight,
               colors: [
                 Colors.transparent,
-                Colors.white.withOpacity(0.4),
+                Colors.white.withAlpha(102),
                 Colors.transparent,
               ],
               stops: [

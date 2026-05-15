@@ -131,8 +131,7 @@ class SettingsScreen extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: color,
-            activeTrackColor: color.withAlpha(50),
+            activeTrackColor: AppColors.primaryNeon,
             inactiveThumbColor: AppColors.textMuted,
             inactiveTrackColor: AppColors.surfaceBright,
           ),

@@ -15,7 +15,7 @@ const List<String> cousin_chaos_dares_confessions_words = [
   'Confess Fear',
   'Show Your Phone',
   'Do a Cartwheel',
-  'Spend $5 on a Wish',
+  'Spend \$5 on a Wish',
   'Say I Love You',
   'Do a Dramatic Monologue',
   'Confess a Lie',

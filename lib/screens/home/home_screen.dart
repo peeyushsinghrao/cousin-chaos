@@ -13,7 +13,8 @@ import '../new_modes/bomb_pass_screen.dart';
 import '../new_modes/chaos_mode_screen.dart';
 import '../new_modes/freeze_mode_screen.dart';
 import '../new_modes/hot_seat_screen.dart';
-import '../new_modes/impostor_mode_setup_screen.dart';
+import '../new_modes/impostor_players_screen.dart';
+import '../../core/navigation/page_transitions.dart';
 import '../new_modes/judge_me_screen.dart';
 import '../new_modes/laugh_attack_screen.dart';
 import '../new_modes/last_standing_screen.dart';
@@ -105,10 +106,10 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withOpacity(0.15),
+                color: AppColors.primary.withAlpha(38),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: AppColors.primary.withAlpha(38),
                     blurRadius: 80,
                   ),
                 ],
@@ -123,10 +124,10 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.secondary.withOpacity(0.15),
+                color: AppColors.secondary.withAlpha(38),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.secondary.withOpacity(0.15),
+                    color: AppColors.secondary.withAlpha(38),
                     blurRadius: 80,
                   ),
                 ],
@@ -142,10 +143,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.3),
+        color: AppColors.surface.withAlpha(76),
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withAlpha(26),
             width: 1,
           ),
         ),
@@ -168,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 24,
                 shadows: [
                   Shadow(
-                    color: AppColors.primary.withOpacity(0.8),
+                    color: AppColors.primary.withAlpha(204),
                     blurRadius: 10,
                   ),
                 ],
@@ -250,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const DailyChallengeScreen()),
+                  slideUpRoute(const DailyChallengeScreen()),
                 );
               },
               child: Text('VIEW', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.black)),
@@ -274,10 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: AppColors.primary,
           onTap: () {
             DisclaimerDialog.show(context, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PackSelectionScreen()),
-              );
+              Navigator.push(context, slideUpRoute(const PackSelectionScreen()));
             });
           },
         ),
@@ -292,12 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.person_search,
           color: AppColors.tertiary,
           onTap: () {
-            DisclaimerDialog.show(context, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ImpostorModeSetupScreen()),
-              );
-            });
+            Navigator.push(context, slideUpRoute(const ImpostorPlayersScreen()));
           },
         ),
         
@@ -327,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.zero,
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.4),
+              color: color.withAlpha(102),
               blurRadius: 50,
               spreadRadius: -12,
               offset: const Offset(0, 20),
@@ -341,9 +334,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  color.withOpacity(0.1),
+                  color.withAlpha(26),
                   Colors.transparent,
-                  AppColors.surface.withOpacity(0.8),
+                  AppColors.surface.withAlpha(204),
                 ],
               ),
             ),
@@ -358,7 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.all(8),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.4),
+                        color: color.withAlpha(102),
                         blurRadius: 20,
                       ),
                     ],
@@ -381,10 +374,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.2),
+                          color: color.withAlpha(51),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: color.withOpacity(0.3),
+                            color: color.withAlpha(76),
                             width: 1,
                           ),
                         ),
@@ -453,10 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return SizedBox(
             width: 250,
             child: GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => mode['route'] as Widget),
-              ),
+              onTap: () => Navigator.push(context, slideUpRoute(mode['route'] as Widget)),
               child: GlassCard(
                 borderRadius: 18,
                 padding: const EdgeInsets.all(0),
@@ -476,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              (mode['color'] as Color).withOpacity(0.25),
+                              (mode['color'] as Color).withAlpha(64),
                               Colors.transparent,
                             ],
                           ),
@@ -565,7 +555,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withAlpha(13),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: ClipRRect(
@@ -625,7 +615,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               'Friends',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.primary.withOpacity(0.6),
+                                color: AppColors.primary.withAlpha(153),
                               ),
                             ),
                           ),
@@ -671,7 +661,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               'XP',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.secondary.withOpacity(0.6),
+                                color: AppColors.secondary.withAlpha(153),
                               ),
                             ),
                           ),
@@ -696,16 +686,16 @@ class _HomeScreenState extends State<HomeScreen> {
       right: 0,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainer.withOpacity(0.4),
+          color: AppColors.surfaceContainer.withAlpha(102),
           border: Border(
             top: BorderSide(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withAlpha(26),
               width: 1,
             ),
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
+              color: AppColors.primary.withAlpha(76),
               blurRadius: 40,
               spreadRadius: -10,
               offset: const Offset(0, -10),
@@ -768,12 +758,12 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.2) : Colors.transparent,
+          color: isSelected ? AppColors.primary.withAlpha(51) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.4),
+                    color: AppColors.primary.withAlpha(102),
                     blurRadius: 15,
                   ),
                 ]
@@ -784,14 +774,14 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withOpacity(0.7),
+              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withAlpha(178),
               size: 24,
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withOpacity(0.7),
+                color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withAlpha(178),
               ),
             ),
           ],

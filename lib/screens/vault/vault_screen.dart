@@ -186,7 +186,7 @@ class _VaultScreenState extends State<VaultScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 24,
-                                backgroundColor: AppColors.secondary.withOpacity(0.2),
+                                backgroundColor: AppColors.secondary.withAlpha(51),
                                 child: Text(session.mode.substring(0, 1), style: const TextStyle(color: Colors.white)),
                               ),
                               const SizedBox(width: 16),
@@ -253,7 +253,7 @@ class _VaultScreenState extends State<VaultScreen> {
               Container(
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withAlpha(20),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: FractionallySizedBox(
@@ -340,7 +340,7 @@ class _VaultScreenState extends State<VaultScreen> {
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withOpacity(0.12),
+                color: AppColors.primary.withAlpha(31),
               ),
               padding: const EdgeInsets.all(16),
               child: Text(icon, style: const TextStyle(fontSize: 24)),
