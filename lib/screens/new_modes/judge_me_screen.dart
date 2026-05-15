@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
+import '../../services/haptic_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/sound_service.dart';
 
 enum _JudgePhase { setup, passDevice, confess, judge, reveal, score }
 enum _Verdict { mild, chaotic, criminal }
@@ -33,6 +38,9 @@ class _JudgeMeScreenState extends State<JudgeMeScreen> {
     super.dispose();
   }
 
+  bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
+  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
+
   void _startGame() {
     _scores.clear();
     for (final p in _players) _scores[p] = 0;
@@ -51,12 +59,13 @@ class _JudgeMeScreenState extends State<JudgeMeScreen> {
     }
     _currentConfession = text;
     _playerVerdicts.clear();
+    SoundService.instance.play(SoundEvent.cardReveal, soundEnabled: _soundEnabled);
     setState(() => _phase = _JudgePhase.judge);
   }
 
   void _vote(String playerName, _Verdict verdict) {
     if (_playerVerdicts.containsKey(playerName)) return;
-    HapticFeedback.lightImpact();
+    HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
     setState(() => _playerVerdicts[playerName] = verdict);
   }
 
@@ -65,6 +74,7 @@ class _JudgeMeScreenState extends State<JudgeMeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('All judges must vote!')));
       return;
     }
+    SoundService.instance.play(SoundEvent.win, soundEnabled: _soundEnabled);
     setState(() => _phase = _JudgePhase.reveal);
   }
 
@@ -77,6 +87,7 @@ class _JudgeMeScreenState extends State<JudgeMeScreen> {
   }
 
   void _nextRound() {
+    SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: _soundEnabled);
     int totalScore = _playerVerdicts.values.fold(0, (sum, v) => sum + _verdictScore(v));
     _scores[_players[_currentPlayerIndex]] = (_scores[_players[_currentPlayerIndex]] ?? 0) + totalScore;
 
@@ -109,10 +120,21 @@ class _JudgeMeScreenState extends State<JudgeMeScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.background,
-    body: SafeArea(child: _body()),
-  );
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _phase == _JudgePhase.setup,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_phase == _JudgePhase.setup) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(child: _body()),
+      ),
+    );
+  }
 
   Widget _body() {
     switch (_phase) {
@@ -317,9 +339,9 @@ class _JudgeMeScreenState extends State<JudgeMeScreen> {
   Widget _playerHeader() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     Text('${_players.length} players', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
     Row(children: [
-      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticFeedback.lightImpact(); setState(() => _players.removeLast()); }, AppColors.dareRed),
+      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() => _players.removeLast()); }, AppColors.dareRed),
       const SizedBox(width: 10),
-      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticFeedback.lightImpact(); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
+      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
     ]),
   ]);
 

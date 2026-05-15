@@ -77,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const CrewScreen(),
                         const VaultScreen(),
+                        const SettingsScreen(),
                       ],
                     ),
                   ),
@@ -152,13 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(Icons.menu),
-            color: AppColors.primary,
-            onPressed: () {},
-          ),
-          const SizedBox(width: 16),
           PulseGlowAnimation(
             duration: const Duration(seconds: 3),
             glowColor: AppColors.primary,
@@ -174,6 +170,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _selectedTab = 3),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceCard,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderGlass),
+              ),
+              child: Icon(Icons.settings_rounded, color: AppColors.primary, size: 20),
             ),
           ),
         ],
@@ -731,12 +739,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.settings,
                   label: 'Settings',
                   isSelected: _selectedTab == 3,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      slideUpRoute(const SettingsScreen()),
-                    );
-                  },
+                  onTap: () => setState(() => _selectedTab = 3),
                 ),
               ],
             ),

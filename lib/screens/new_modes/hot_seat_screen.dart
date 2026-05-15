@@ -3,8 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 import '../../data/hot_seat_dares.dart';
+import '../../services/haptic_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/sound_service.dart';
 
 enum _HotSeatPhase { setup, passDevice, dare, score }
 
@@ -29,21 +34,25 @@ class _HotSeatScreenState extends State<HotSeatScreen> {
   final Map<String, int> _scores = {};
   String _currentDare = '';
 
+  bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
+  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
+
   void _addPlayer() {
     if (_players.length >= 12) return;
-    HapticFeedback.lightImpact();
+    HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
     setState(() => _players.add('Player $_nextId'));
     _nextId++;
   }
 
   void _removePlayer() {
     if (_players.length <= 2) return;
-    HapticFeedback.lightImpact();
+    HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
     setState(() => _players.removeLast());
   }
 
   void _startGame() {
-    HapticFeedback.mediumImpact();
+    HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled);
+    SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
     _scores.clear();
     for (final p in _players) {
       _scores[p] = 0;
@@ -59,12 +68,14 @@ class _HotSeatScreenState extends State<HotSeatScreen> {
   }
 
   void _onPassDevice() {
-    HapticFeedback.lightImpact();
+    HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
+    SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: _soundEnabled);
     setState(() => _phase = _HotSeatPhase.dare);
   }
 
   void _onComplete(bool success) {
-    HapticFeedback.mediumImpact();
+    HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled);
+    SoundService.instance.play(success ? SoundEvent.win : SoundEvent.wrong, soundEnabled: _soundEnabled);
     if (success) {
       _scores[_players[_currentPlayerIndex]] = (_scores[_players[_currentPlayerIndex]] ?? 0) + 1;
     }
@@ -82,9 +93,18 @@ class _HotSeatScreenState extends State<HotSeatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(child: _buildPhase()),
+    return PopScope(
+      canPop: _phase == _HotSeatPhase.setup,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_phase == _HotSeatPhase.setup) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(child: _buildPhase()),
+      ),
     );
   }
 

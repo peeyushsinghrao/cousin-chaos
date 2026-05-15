@@ -353,7 +353,7 @@ class _PlayerSetupScreenState extends State<PlayerSetupScreen> {
           ),
           child: Center(
             child: Text(
-              'Let\'s Go! 🔥',
+              'Let\'s Go!',
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,

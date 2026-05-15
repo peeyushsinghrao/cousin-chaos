@@ -3,8 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 import '../../data/most_likely_prompts.dart';
+import '../../services/haptic_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/sound_service.dart';
 
 enum _MLPhase { setup, countdown, voting, tally, score }
 
@@ -47,6 +52,9 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
     super.dispose();
   }
 
+  bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
+  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
+
   void _startGame() {
     _scores.clear();
     for (final p in _players) _scores[p] = 0;
@@ -68,7 +76,11 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
-      setState(() { _countdownValue--; HapticFeedback.lightImpact(); });
+      setState(() {
+        _countdownValue--;
+        HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
+        SoundService.instance.play(SoundEvent.countdown, soundEnabled: _soundEnabled);
+      });
       if (_countdownValue <= 0) {
         t.cancel();
         setState(() => _phase = _MLPhase.voting);
@@ -78,7 +90,8 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
 
   void _pick(String player) {
     if (_myPick != null) return;
-    HapticFeedback.mediumImpact();
+    HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled);
+    SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
     setState(() {
       _myPick = player;
       _tally[player] = (_tally[player] ?? 0) + 1;
@@ -91,6 +104,7 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
     if (sorted.isNotEmpty) {
       _scores[sorted.first.key] = (_scores[sorted.first.key] ?? 0) + 1;
     }
+    SoundService.instance.play(SoundEvent.cardReveal, soundEnabled: _soundEnabled);
     setState(() => _phase = _MLPhase.tally);
   }
 
@@ -103,10 +117,21 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.background,
-    body: SafeArea(child: _body()),
-  );
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _phase == _MLPhase.setup,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_phase == _MLPhase.setup) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(child: _body()),
+      ),
+    );
+  }
 
   Widget _body() {
     switch (_phase) {
@@ -272,9 +297,9 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
   Widget _playerHeader() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     Text('${_players.length} players', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
     Row(children: [
-      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticFeedback.lightImpact(); setState(() => _players.removeLast()); }, AppColors.dareRed),
+      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() => _players.removeLast()); }, AppColors.dareRed),
       const SizedBox(width: 10),
-      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticFeedback.lightImpact(); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
+      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
     ]),
   ]);
 

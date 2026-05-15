@@ -1,0 +1,648 @@
+# COUSIN CHAOS — FULL FIX IMPLEMENTATION PLAN
+## Everything except Impostor Mode screen
+> Apply phases in order. Run `flutter analyze` after each phase. Zero errors before moving on.
+
+---
+
+## ABSOLUTE RULES REMINDER (never violate these in any edit)
+
+1. `withOpacity()` → NEVER. Always `withAlpha()`. Formula: `withOpacity(x)` = `withAlpha((x * 255).round())`
+2. No emoji strings in any UI widget. Use `Icon()` only.
+3. Never modify: `trivia_data.dart`, `nhie_data.dart`, `wyr_data.dart`, `pack_data.dart`, `random_data.dart`
+4. Never modify: `models/player.dart`, `models/pack.dart`, `services/pack_manager.dart`, `services/player_manager.dart`, `services/preferences_service.dart`, `services/api_service.dart`
+5. Always use `slideUpRoute()` — never `MaterialPageRoute`
+6. Always dispose every `AnimationController` in `dispose()` before `super.dispose()`
+7. Never create `AnimationController` inside `build()`
+8. Always import `GlassCard` from `lib/core/widgets/glass_card.dart`
+
+---
+
+## PHASE 1 — RULE VIOLATIONS (fix first, no logic risk)
+
+### FIX 1A — `animations.dart` withOpacity violation
+**File:** `lib/core/widgets/animations.dart`
+**Line 383:** 
+```dart
+// BEFORE:
+color: widget.pulseColor.withOpacity(0.4 * (1 - _animation.value)),
+
+// AFTER:
+color: widget.pulseColor.withAlpha((0.4 * (1 - _animation.value) * 255).round()),
+```
+
+---
+
+### FIX 1B — `player_setup_screen.dart` emoji in button
+**File:** `lib/screens/truth_or_dare/player_setup_screen.dart`
+**Line 356:**
+```dart
+// BEFORE:
+'Let\'s Go! 🔥'
+
+// AFTER:
+'Let\'s Go!'
+```
+
+---
+
+### FIX 1C — `vault_screen.dart` emoji in badge cards
+**File:** `lib/screens/vault/vault_screen.dart`
+**Lines 144–145:** Find `_buildBadgeCard('🔥', 'First Flame', true)` and `_buildBadgeCard('👑', 'Chaos Master', true)`.
+
+The `_buildBadgeCard` method takes an emoji string as its first argument. Replace both calls and update the method signature:
+
+```dart
+// BEFORE (calls):
+_buildBadgeCard('🔥', 'First Flame', true),
+_buildBadgeCard('👑', 'Chaos Master', true),
+
+// AFTER (calls):
+_buildBadgeCard(Icons.local_fire_department_rounded, 'First Flame', true),
+_buildBadgeCard(Icons.workspace_premium_rounded, 'Chaos Master', true),
+```
+
+Find the `_buildBadgeCard` method and update its signature and body:
+```dart
+// BEFORE method signature:
+Widget _buildBadgeCard(String emoji, String label, bool unlocked) {
+  // ... somewhere inside uses Text(emoji) ...
+}
+
+// AFTER:
+Widget _buildBadgeCard(IconData icon, String label, bool unlocked) {
+  // Replace Text(emoji) with:
+  Icon(icon, color: unlocked ? AppColors.neonYellow : AppColors.textMuted, size: 28)
+}
+```
+
+---
+
+### FIX 1D — `wyr_game_screen.dart` emoji reaction list
+**File:** `lib/screens/would_you_rather/wyr_game_screen.dart`
+**Line 337:** The `_buildReaction()` method uses a list of emoji strings shuffled and displayed in a `Text` widget.
+
+Replace the entire `_buildReaction()` method:
+```dart
+Widget _buildReaction() {
+  // Replace emoji strings with Icon widgets shown in a Row
+  final reactionIcons = [
+    Icons.local_fire_department_rounded,
+    Icons.sentiment_very_satisfied_rounded,
+    Icons.skull_rounded,
+    Icons.emoji_emotions_rounded,
+    Icons.psychology_rounded,
+    Icons.visibility_rounded,
+    Icons.bolt_rounded,
+    Icons.star_rounded,
+  ];
+  reactionIcons.shuffle();
+  final icon = reactionIcons.first;
+  return FadeInUp(
+    duration: const Duration(milliseconds: 400),
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Icon(icon, color: AppColors.neonYellow, size: 32),
+    ),
+  );
+}
+```
+
+---
+
+### FIX 1E — Delete orphaned file
+**Delete:** `lib/screens/new_modes/impostor_setup_screen.dart`
+This file is no longer in any routing chain. It is not imported anywhere. Delete it.
+
+---
+
+## PHASE 2 — POPSCOPE ON ALL GAME SCREENS
+
+**10 screens** are missing back-gesture guards. Add `PopScope` to each one.
+
+The `showLeaveGameDialog` function already exists at `lib/core/widgets/leave_game_dialog.dart`. Import it in each file.
+
+**Template to wrap the `Scaffold` in each screen:**
+```dart
+return PopScope(
+  canPop: false,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    final leave = await showLeaveGameDialog(context);
+    if (leave == true && context.mounted) Navigator.pop(context);
+  },
+  child: Scaffold(
+    // ... existing scaffold content unchanged ...
+  ),
+);
+```
+
+**Import to add at top of each file:**
+```dart
+import '../../core/widgets/leave_game_dialog.dart';
+```
+
+---
+
+### FIX 2A — `hot_seat_screen.dart`
+**File:** `lib/screens/new_modes/hot_seat_screen.dart`
+
+The `build()` method currently returns `Scaffold(...)` directly. Wrap it in `PopScope` as per the template above.
+
+> Note: Only wrap during GAME phases. During `setup` phase the user should be able to freely go back. Check the phase:
+```dart
+return PopScope(
+  canPop: _phase == _HotSeatPhase.setup,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    if (_phase == _HotSeatPhase.setup) return;
+    final leave = await showLeaveGameDialog(context);
+    if (leave == true && context.mounted) Navigator.pop(context);
+  },
+  child: Scaffold(...),
+);
+```
+
+---
+
+### FIX 2B — `alibi_screen.dart`
+**File:** `lib/screens/new_modes/alibi_screen.dart`
+
+Same pattern — `canPop` only during setup:
+```dart
+return PopScope(
+  canPop: _phase == _AlibiPhase.setup,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    if (_phase == _AlibiPhase.setup) return;
+    final leave = await showLeaveGameDialog(context);
+    if (leave == true && context.mounted) Navigator.pop(context);
+  },
+  child: Scaffold(...),
+);
+```
+
+---
+
+### FIX 2C — `most_likely_screen.dart`
+**File:** `lib/screens/new_modes/most_likely_screen.dart`
+
+```dart
+return PopScope(
+  canPop: _phase == _MLPhase.setup,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    if (_phase == _MLPhase.setup) return;
+    final leave = await showLeaveGameDialog(context);
+    if (leave == true && context.mounted) Navigator.pop(context);
+  },
+  child: Scaffold(...),
+);
+```
+
+---
+
+### FIX 2D — `rank_it_screen.dart`
+**File:** `lib/screens/new_modes/rank_it_screen.dart`
+
+```dart
+return PopScope(
+  canPop: _phase == _RankPhase.setup,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    if (_phase == _RankPhase.setup) return;
+    final leave = await showLeaveGameDialog(context);
+    if (leave == true && context.mounted) Navigator.pop(context);
+  },
+  child: Scaffold(...),
+);
+```
+
+---
+
+### FIX 2E — `two_truths_one_lie_screen.dart`
+**File:** `lib/screens/new_modes/two_truths_one_lie_screen.dart`
+
+```dart
+return PopScope(
+  canPop: _phase == _TTLPhase.setup,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    if (_phase == _TTLPhase.setup) return;
+    final leave = await showLeaveGameDialog(context);
+    if (leave == true && context.mounted) Navigator.pop(context);
+  },
+  child: Scaffold(...),
+);
+```
+
+---
+
+### FIX 2F — `judge_me_screen.dart`
+**File:** `lib/screens/new_modes/judge_me_screen.dart`
+
+```dart
+return PopScope(
+  canPop: _phase == _JudgePhase.setup,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    if (_phase == _JudgePhase.setup) return;
+    final leave = await showLeaveGameDialog(context);
+    if (leave == true && context.mounted) Navigator.pop(context);
+  },
+  child: Scaffold(...),
+);
+```
+
+---
+
+### FIX 2G — `nhie_game_screen.dart`
+**File:** `lib/screens/never_have_i_ever/nhie_game_screen.dart`
+
+This screen has no setup phase — it starts playing immediately. Guard the entire screen:
+```dart
+return PopScope(
+  canPop: false,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    final leave = await showLeaveGameDialog(context);
+    if (leave == true && context.mounted) Navigator.pop(context);
+  },
+  child: Scaffold(...),
+);
+```
+
+---
+
+### FIX 2H — `wyr_game_screen.dart`
+**File:** `lib/screens/would_you_rather/wyr_game_screen.dart`
+
+```dart
+return PopScope(
+  canPop: false,
+  onPopInvokedWithResult: (didPop, _) async {
+    if (didPop) return;
+    final leave = await showLeaveGameDialog(context);
+    if (leave == true && context.mounted) Navigator.pop(context);
+  },
+  child: Scaffold(...),
+);
+```
+
+---
+
+### FIX 2I — `act_it_out_screen.dart`
+**File:** `lib/screens/new_modes/act_it_out_screen.dart`
+
+Read the file fully first. Find the phase enum. Apply the same pattern — `canPop` only during setup phase:
+```dart
+// canPop: _phase == [whatever the setup phase enum value is]
+```
+
+---
+
+### FIX 2J — `target_player_screen.dart`
+**File:** `lib/screens/new_modes/target_player_screen.dart`
+
+Read the file fully first. Apply the same `PopScope` pattern.
+
+---
+
+### FIX 2K — `secret_mission_screen.dart`
+**File:** `lib/screens/new_modes/secret_mission_screen.dart`
+
+Read the file fully first. Apply the same `PopScope` pattern.
+
+---
+
+## PHASE 3 — HOME SCREEN FIXES
+
+**File:** `lib/screens/home/home_screen.dart`
+
+### FIX 3A — Settings tab broken (pushes route instead of switching IndexedStack)
+
+**Problem:** The Settings nav item in `_buildBottomNavBar()` calls `Navigator.push(slideUpRoute(SettingsScreen()))` instead of `setState(() => _selectedTab = 3)`. This means:
+- The Settings screen is NOT in the `IndexedStack` (only 3 children: Chaos, Crew, Vault)
+- The tab index 3 is selected visually but nothing renders in the stack
+- Navigating to Settings and back loses the tab state
+
+**Fix — two changes:**
+
+**Step 1:** Add `SettingsScreen` as the 4th child of `IndexedStack`:
+```dart
+// Add this import at top if not present:
+import '../settings/settings_screen.dart';
+
+// In _buildGameModeGrid's parent IndexedStack, change children from:
+children: [
+  SingleChildScrollView(...),   // index 0 — Chaos
+  const CrewScreen(),           // index 1 — Crew
+  const VaultScreen(),          // index 2 — Vault
+],
+
+// To:
+children: [
+  SingleChildScrollView(...),   // index 0 — Chaos
+  const CrewScreen(),           // index 1 — Crew
+  const VaultScreen(),          // index 2 — Vault
+  const SettingsScreen(),       // index 3 — Settings
+],
+```
+
+**Step 2:** Change the Settings nav item's `onTap` from `Navigator.push` to `setState`:
+```dart
+// BEFORE:
+_buildNavItem(
+  icon: Icons.settings,
+  label: 'Settings',
+  isSelected: _selectedTab == 3,
+  onTap: () {
+    Navigator.push(context, slideUpRoute(const SettingsScreen()));
+  },
+),
+
+// AFTER:
+_buildNavItem(
+  icon: Icons.settings,
+  label: 'Settings',
+  isSelected: _selectedTab == 3,
+  onTap: () => setState(() => _selectedTab = 3),
+),
+```
+
+---
+
+### FIX 3B — Menu button does nothing
+
+**Problem:** `_buildTopAppBar()` has `IconButton(onPressed: () {}, ...)` for a hamburger menu that has no functionality.
+
+**Fix:** Remove the menu button entirely and left-align the title, OR replace it with a themed icon that makes sense. The cleanest fix is to remove the menu icon and center the title:
+
+```dart
+Widget _buildTopAppBar() {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    decoration: BoxDecoration(
+      color: AppColors.surface.withAlpha(76),
+      border: Border(
+        bottom: BorderSide(color: Colors.white.withAlpha(26), width: 1),
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        PulseGlowAnimation(
+          duration: const Duration(seconds: 3),
+          glowColor: AppColors.primary,
+          child: Text(
+            'COUSIN CHAOS',
+            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+              color: AppColors.primary,
+              fontSize: 24,
+              shadows: [Shadow(color: AppColors.primary.withAlpha(204), blurRadius: 10)],
+            ),
+          ),
+        ),
+        // Right side: settings icon (taps to settings tab)
+        GestureDetector(
+          onTap: () => setState(() => _selectedTab = 3),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceCard,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderGlass),
+            ),
+            child: Icon(Icons.settings_rounded, color: AppColors.primary, size: 20),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+```
+
+---
+
+## PHASE 4 — VAULT SCREEN FIX
+
+**File:** `lib/screens/vault/vault_screen.dart`
+
+### FIX 4A — `Expanded` inside `SingleChildScrollView` render error
+
+**Problem:** `vault_screen.dart` wraps content in `SingleChildScrollView` but uses `Expanded` widgets inside a `Column` within it (lines 80, 115, 117, 126, 128, 193). `Expanded` inside `SingleChildScrollView` causes a Flutter render error at runtime because `SingleChildScrollView` provides unbounded height.
+
+**Fix:** Replace every `Expanded(child: X)` inside the scrollable column with `SizedBox(width: double.infinity, child: X)` or `IntrinsicHeight(child: X)` depending on context.
+
+Specifically:
+- Line 80: `Expanded(child: _buildMiniSessionCard(...))` inside a `Row` inside `GlassCard` inside the `SingleChildScrollView`. Rows can use `Expanded` fine — leave those.
+- Lines 115, 117: `Expanded(child: _buildMiniSessionCard(...))` inside a `Row` — these are fine, leave them.
+- Lines 126, 128: `Expanded(child: _buildStatCard(...))` inside a `Row` — fine, leave them.
+- Line 193: `Expanded(child: Column(...))` inside a `Row` inside `GlassCard` — also fine if in a Row.
+
+Read the file fully before editing. Only remove `Expanded` that is a **direct child of a Column** (not a Row) that itself is inside `SingleChildScrollView`. If `Expanded` is directly inside a Column (not Row), replace with `SizedBox(width: double.infinity, ...)`.
+
+---
+
+## PHASE 5 — SOUND WIRING ON MISSING SCREENS
+
+The following screens have gameplay but no sound calls. Add sound to key moments.
+
+**Import to add in each file:**
+```dart
+import 'package:provider/provider.dart';
+import '../../services/sound_service.dart';
+import '../../services/preferences_service.dart';
+```
+
+**Getter to add to each State class:**
+```dart
+bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
+```
+
+---
+
+### FIX 5A — `hot_seat_screen.dart`
+
+| Moment | Method | Sound Event |
+|--------|--------|-------------|
+| Start Game button | `_startGame()` | `SoundEvent.tap` |
+| Pass Device button | `_onPassDevice()` | `SoundEvent.nextPlayer` |
+| Done +1 (success) | `_onComplete(true)` | `SoundEvent.win` |
+| Skip button | `_onComplete(false)` | `SoundEvent.wrong` |
+
+```dart
+// In _startGame():
+SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
+
+// In _onPassDevice():
+SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: _soundEnabled);
+
+// In _onComplete(bool success):
+SoundService.instance.play(
+  success ? SoundEvent.win : SoundEvent.wrong,
+  soundEnabled: _soundEnabled,
+);
+```
+
+---
+
+### FIX 5B — `alibi_screen.dart`
+
+| Moment | Method | Sound Event |
+|--------|--------|-------------|
+| Start prep timer | `_startPrep()` | `SoundEvent.tap` |
+| Last 5s of prep | `_prepTimer` countdown | `SoundEvent.countdown` |
+| Timer ends | when `_prepSecondsLeft <= 0` | `SoundEvent.timerEnd` |
+| Move to alibi give | `_skipToAlibi()` | `SoundEvent.tap` |
+| Done — Next | `_nextPlayer()` | `SoundEvent.nextPlayer` |
+| Verdict shown | `_vote()` after confirm | `SoundEvent.win` |
+
+---
+
+### FIX 5C — `most_likely_screen.dart`
+
+| Moment | Method | Sound Event |
+|--------|--------|-------------|
+| Countdown tick | `_runCountdown()` each tick | `SoundEvent.countdown` |
+| Player taps a pick | `_pick()` | `SoundEvent.tap` |
+| Lock in results | `_lockIn()` | `SoundEvent.cardReveal` |
+
+---
+
+### FIX 5D — `two_truths_one_lie_screen.dart`
+
+| Moment | Sound Event |
+|--------|-------------|
+| Submit statements | `SoundEvent.tap` |
+| Guess confirmed correct | `SoundEvent.win` |
+| Guess confirmed wrong | `SoundEvent.wrong` |
+| Next round | `SoundEvent.nextPlayer` |
+
+---
+
+### FIX 5E — `judge_me_screen.dart`
+
+| Moment | Sound Event |
+|--------|-------------|
+| Submit confession | `SoundEvent.cardReveal` |
+| Verdict locked | `SoundEvent.win` |
+| Next round | `SoundEvent.nextPlayer` |
+
+---
+
+### FIX 5F — `rank_it_screen.dart`
+
+| Moment | Sound Event |
+|--------|-------------|
+| Lock ranking | `SoundEvent.cardReveal` |
+| Next round | `SoundEvent.nextPlayer` |
+
+---
+
+## PHASE 6 — HAPTIC WIRING ON MISSING SCREENS
+
+**Import to add:**
+```dart
+import '../../services/haptic_service.dart';
+```
+
+**Getter:**
+```dart
+bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
+```
+
+Replace all raw `HapticFeedback.*` calls in the 6 new mode screens with `HapticService.instance.trigger(...)`:
+
+| Raw call | Replace with |
+|----------|-------------|
+| `HapticFeedback.lightImpact()` | `HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled)` |
+| `HapticFeedback.mediumImpact()` | `HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled)` |
+| `HapticFeedback.heavyImpact()` | `HapticService.instance.trigger(HapticEvent.playerEliminated, hapticsEnabled: _hapticsEnabled)` |
+
+**Apply to these files:**
+- `hot_seat_screen.dart`
+- `alibi_screen.dart`
+- `most_likely_screen.dart`
+- `rank_it_screen.dart`
+- `two_truths_one_lie_screen.dart`
+- `judge_me_screen.dart`
+
+> Note: `nhie_game_screen.dart` and `wyr_game_screen.dart` already wire `PreferencesService` and `SoundService` — check and update their raw `HapticFeedback` calls too.
+
+---
+
+## VERIFICATION CHECKLIST
+
+Run through after all phases complete. `flutter analyze` must show zero errors.
+
+### Phase 1 — Rule violations
+- [ ] `flutter analyze` passes with zero errors
+- [ ] No `withOpacity` anywhere in `lib/` — search: `grep -r "withOpacity" lib/`
+- [ ] No emoji strings in any UI widget — search: `grep -r "🔥\|👑\|😂\|💀" lib/`
+- [ ] `impostor_setup_screen.dart` deleted — confirm file does not exist
+
+### Phase 2 — PopScope
+- [ ] `hot_seat_screen.dart` — back gesture during dare shows leave dialog, during setup goes straight back
+- [ ] `alibi_screen.dart` — back gesture during game shows leave dialog
+- [ ] `most_likely_screen.dart` — back gesture during game shows leave dialog
+- [ ] `rank_it_screen.dart` — back gesture during game shows leave dialog
+- [ ] `two_truths_one_lie_screen.dart` — back gesture during game shows leave dialog
+- [ ] `judge_me_screen.dart` — back gesture during game shows leave dialog
+- [ ] `nhie_game_screen.dart` — back gesture shows leave dialog
+- [ ] `wyr_game_screen.dart` — back gesture shows leave dialog
+- [ ] `act_it_out_screen.dart` — back gesture during game shows leave dialog
+- [ ] `target_player_screen.dart` — back gesture during game shows leave dialog
+- [ ] `secret_mission_screen.dart` — back gesture during game shows leave dialog
+
+### Phase 3 — Home screen
+- [ ] Tapping Settings in bottom nav switches to Settings tab (does NOT push a new route)
+- [ ] Back gesture on Settings tab from home does nothing (it's a tab, not a pushed route)
+- [ ] TopAppBar no longer has a non-functional menu button
+- [ ] Gear icon in top-right switches to Settings tab
+
+### Phase 4 — Vault screen
+- [ ] Vault tab renders without any "Expanded inside unbounded height" Flutter render error
+- [ ] Vault screen scrolls correctly
+
+### Phase 5 — Sound
+- [ ] Hot Seat: sound plays on start, pass device, done, skip
+- [ ] Alibi: countdown tick sound plays in last 5 seconds of prep timer
+- [ ] Most Likely: countdown tick plays during 3-2-1 countdown
+- [ ] Two Truths: sound on correct/wrong guess
+
+### Phase 6 — Haptics
+- [ ] All new mode screens respect the `hapticsEnabled` preference
+- [ ] No raw `HapticFeedback.*` calls remain in the 8 new mode screens
+
+---
+
+## IMPLEMENTATION ORDER SUMMARY
+
+| # | File | Change | Phase |
+|---|------|--------|-------|
+| 1 | `lib/core/widgets/animations.dart` | Fix `withOpacity` line 383 | 1A |
+| 2 | `lib/screens/truth_or_dare/player_setup_screen.dart` | Remove 🔥 from button | 1B |
+| 3 | `lib/screens/vault/vault_screen.dart` | Replace emoji in badge cards | 1C |
+| 4 | `lib/screens/would_you_rather/wyr_game_screen.dart` | Replace emoji reaction list | 1D |
+| 5 | `lib/screens/new_modes/impostor_setup_screen.dart` | DELETE file | 1E |
+| 6 | `lib/screens/new_modes/hot_seat_screen.dart` | Add PopScope | 2A |
+| 7 | `lib/screens/new_modes/alibi_screen.dart` | Add PopScope | 2B |
+| 8 | `lib/screens/new_modes/most_likely_screen.dart` | Add PopScope | 2C |
+| 9 | `lib/screens/new_modes/rank_it_screen.dart` | Add PopScope | 2D |
+| 10 | `lib/screens/new_modes/two_truths_one_lie_screen.dart` | Add PopScope | 2E |
+| 11 | `lib/screens/new_modes/judge_me_screen.dart` | Add PopScope | 2F |
+| 12 | `lib/screens/never_have_i_ever/nhie_game_screen.dart` | Add PopScope | 2G |
+| 13 | `lib/screens/would_you_rather/wyr_game_screen.dart` | Add PopScope | 2H |
+| 14 | `lib/screens/new_modes/act_it_out_screen.dart` | Add PopScope (read file first) | 2I |
+| 15 | `lib/screens/new_modes/target_player_screen.dart` | Add PopScope (read file first) | 2J |
+| 16 | `lib/screens/new_modes/secret_mission_screen.dart` | Add PopScope (read file first) | 2K |
+| 17 | `lib/screens/home/home_screen.dart` | Fix Settings tab — add to IndexedStack | 3A |
+| 18 | `lib/screens/home/home_screen.dart` | Remove dead menu button | 3B |
+| 19 | `lib/screens/vault/vault_screen.dart` | Fix Expanded in ScrollView | 4A |
+| 20 | `hot_seat_screen.dart` | Add sound wiring | 5A |
+| 21 | `alibi_screen.dart` | Add sound wiring | 5B |
+| 22 | `most_likely_screen.dart` | Add sound wiring | 5C |
+| 23 | `two_truths_one_lie_screen.dart` | Add sound wiring | 5D |
+| 24 | `judge_me_screen.dart` | Add sound wiring | 5E |
+| 25 | `rank_it_screen.dart` | Add sound wiring | 5F |
+| 26 | All 8 new mode screens | Replace raw HapticFeedback with HapticService | 6 |

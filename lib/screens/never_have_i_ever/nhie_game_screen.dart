@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/widgets/leave_game_dialog.dart';
+import '../../services/haptic_service.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -79,7 +81,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
 
   void _revealCard() {
     if (_isRevealed) return;
-    HapticFeedback.mediumImpact();
+    HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled);
     final soundEnabled = context.read<PreferencesService>().soundEnabled;
     SoundService.instance.play(SoundEvent.cardReveal, soundEnabled: soundEnabled);
     _flipController.forward(from: 0);
@@ -90,7 +92,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
   }
 
   void _nextStatement() {
-    HapticFeedback.lightImpact();
+    HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
     final soundEnabled = context.read<PreferencesService>().soundEnabled;
     SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: soundEnabled);
     setState(() {
@@ -115,7 +117,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
   }
 
   void _markHasDone(String playerName) {
-    HapticFeedback.mediumImpact();
+    HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled);
     setState(() {
       _drinkCounts[playerName] = (_drinkCounts[playerName] ?? 0) + 1;
     });
@@ -141,36 +143,46 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
     super.dispose();
   }
 
+  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
+
   @override
   Widget build(BuildContext context) {
     final player = _gamePlayers[_currentPlayerIndex % _gamePlayers.length];
 
     if (_showLeaderboard) return _buildLeaderboard();
 
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0A0518), Color(0xFF18082E), Color(0xFF0A0518)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0A0518), Color(0xFF18082E), Color(0xFF0A0518)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildTopBar(),
-              const SizedBox(height: 4),
-              _buildModeSelector(),
-              const SizedBox(height: 8),
-              _buildPlayerStrip(context.read<PlayerManager>(), player.name),
-              const SizedBox(height: 8),
-              _buildPlayerTurn(player.name),
-              Expanded(child: _buildStatementCard()),
-              if (_isRevealed) _buildScoreButtons(),
-              _buildBottomActions(),
-              const SizedBox(height: 12),
-            ],
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildTopBar(),
+                const SizedBox(height: 4),
+                _buildModeSelector(),
+                const SizedBox(height: 8),
+                _buildPlayerStrip(context.read<PlayerManager>(), player.name),
+                const SizedBox(height: 8),
+                _buildPlayerTurn(player.name),
+                Expanded(child: _buildStatementCard()),
+                if (_isRevealed) _buildScoreButtons(),
+                _buildBottomActions(),
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ),
       ),
@@ -228,7 +240,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
           final color = _colorForMode(mode);
           return GestureDetector(
             onTap: () {
-              HapticFeedback.selectionClick();
+              HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
               setState(() => _mode = mode);
             },
             child: AnimatedContainer(
@@ -631,7 +643,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
   Widget _buildActionButton(String label, Color color, IconData icon) {
     return GestureDetector(
       onTap: () {
-        HapticFeedback.mediumImpact();
+        HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled);
         _nextStatement();
       },
       child: Container(

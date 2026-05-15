@@ -3,8 +3,13 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 import '../../data/alibi_questions.dart';
+import '../../services/haptic_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/sound_service.dart';
 
 enum _AlibiPhase { setup, crime, prepTimer, giveAlibi, vote, verdict }
 
@@ -46,6 +51,9 @@ class _AlibiScreenState extends State<AlibiScreen> {
     super.dispose();
   }
 
+  bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
+  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
+
   void _startGame() {
     _scores.clear();
     for (final p in _players) _scores[p] = 0;
@@ -61,6 +69,7 @@ class _AlibiScreenState extends State<AlibiScreen> {
   }
 
   void _startPrep() {
+    SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
     _prepSecondsLeft = 30;
     setState(() => _phase = _AlibiPhase.prepTimer);
     _prepTimer?.cancel();
@@ -68,10 +77,14 @@ class _AlibiScreenState extends State<AlibiScreen> {
       if (!mounted) { t.cancel(); return; }
       setState(() {
         _prepSecondsLeft--;
-        if (_prepSecondsLeft <= 5 && _prepSecondsLeft > 0) HapticFeedback.lightImpact();
+        if (_prepSecondsLeft <= 5 && _prepSecondsLeft > 0) {
+          HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
+          SoundService.instance.play(SoundEvent.countdown, soundEnabled: _soundEnabled);
+        }
         if (_prepSecondsLeft <= 0) {
           t.cancel();
-          HapticFeedback.heavyImpact();
+          HapticService.instance.trigger(HapticEvent.playerEliminated, hapticsEnabled: _hapticsEnabled);
+          SoundService.instance.play(SoundEvent.timerEnd, soundEnabled: _soundEnabled);
           _phase = _AlibiPhase.giveAlibi;
         }
       });
@@ -80,12 +93,14 @@ class _AlibiScreenState extends State<AlibiScreen> {
 
   void _skipToAlibi() {
     _prepTimer?.cancel();
+    SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
     setState(() => _phase = _AlibiPhase.giveAlibi);
   }
 
   void _nextPlayer() {
     _roundsPlayed++;
     final totalTurns = _roundsPerPlayer * _players.length;
+    SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: _soundEnabled);
     if (_roundsPlayed >= totalTurns) {
       setState(() => _phase = _AlibiPhase.vote);
     } else {
@@ -113,15 +128,27 @@ class _AlibiScreenState extends State<AlibiScreen> {
       _votedPlayerId = _players[index];
       final survivors = _players.where((p) => p != _votedPlayerId).toList();
       for (final p in survivors) { _scores[p] = (_scores[p] ?? 0) + 1; }
+      SoundService.instance.play(SoundEvent.win, soundEnabled: _soundEnabled);
       setState(() => _phase = _AlibiPhase.verdict);
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.background,
-    body: SafeArea(child: _body()),
-  );
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _phase == _AlibiPhase.setup,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_phase == _AlibiPhase.setup) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(child: _body()),
+      ),
+    );
+  }
 
   Widget _body() {
     switch (_phase) {
@@ -303,9 +330,9 @@ class _AlibiScreenState extends State<AlibiScreen> {
   Widget _playerHeader() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     Text('${_players.length} players', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
     Row(children: [
-      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticFeedback.lightImpact(); setState(() => _players.removeLast()); }, AppColors.dareRed),
+      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() => _players.removeLast()); }, AppColors.dareRed),
       const SizedBox(width: 10),
-      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticFeedback.lightImpact(); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
+      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
     ]),
   ]);
 

@@ -6,7 +6,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/wyr_data.dart';
+import '../../core/widgets/leave_game_dialog.dart';
+import '../../services/haptic_service.dart';
 import '../../services/player_manager.dart';
+import '../../services/preferences_service.dart';
 import '../../services/api_service.dart';
 import '../../services/pack_manager.dart';
 
@@ -73,9 +76,11 @@ class _WouldYouRatherScreenState extends State<WouldYouRatherScreen>
 
   Map<String, dynamic> get _currentQuestion => _questions[_currentIndex % _questions.length];
 
+  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
+
   void _selectOption(String option) {
     if (_selectedOption != null) return;
-    HapticFeedback.heavyImpact();
+    HapticService.instance.trigger(HapticEvent.playerEliminated, hapticsEnabled: _hapticsEnabled);
     _bounceController.forward(from: 0);
     setState(() {
       _selectedOption = option;
@@ -120,7 +125,14 @@ class _WouldYouRatherScreenState extends State<WouldYouRatherScreen>
     final player = pm.players[_currentPlayerIndex % pm.players.length];
     final q = _currentQuestion;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -152,6 +164,7 @@ class _WouldYouRatherScreenState extends State<WouldYouRatherScreen>
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -177,7 +190,7 @@ class _WouldYouRatherScreenState extends State<WouldYouRatherScreen>
           )),
           IconButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
               _nextQuestion();
             },
             icon: Container(
@@ -334,13 +347,23 @@ class _WouldYouRatherScreenState extends State<WouldYouRatherScreen>
   }
 
   Widget _buildReaction() {
-    final reactions = ['🔥', '😱', '💀', '😂', '🤯', '👀', '💣', '⚡'];
-    reactions.shuffle();
+    final reactionIcons = [
+      Icons.local_fire_department_rounded,
+      Icons.sentiment_very_satisfied_rounded,
+      Icons.dangerous_rounded,
+      Icons.emoji_emotions_rounded,
+      Icons.psychology_rounded,
+      Icons.visibility_rounded,
+      Icons.bolt_rounded,
+      Icons.star_rounded,
+    ];
+    reactionIcons.shuffle();
+    final icon = reactionIcons.first;
     return FadeInUp(
       duration: const Duration(milliseconds: 400),
       child: Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Text(reactions.first, style: const TextStyle(fontSize: 48)),
+        child: Icon(icon, color: AppColors.neonYellow, size: 32),
       ),
     );
   }

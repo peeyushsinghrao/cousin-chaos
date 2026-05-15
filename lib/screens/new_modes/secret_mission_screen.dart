@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 import '../../services/player_manager.dart';
 import '../../models/player.dart';
 
@@ -92,7 +93,15 @@ class _SecretMissionScreenState extends State<SecretMissionScreen> {
   Widget build(BuildContext context) {
     if (_players.isEmpty) return const Scaffold(backgroundColor: AppColors.background);
 
-    return Scaffold(
+    return PopScope(
+      canPop: _currentPhase == SecretMissionPhase.setup,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_currentPhase == SecretMissionPhase.setup) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -123,6 +132,7 @@ class _SecretMissionScreenState extends State<SecretMissionScreen> {
         ),
         child: _buildBody(),
       ),
+    ),
     );
   }
 

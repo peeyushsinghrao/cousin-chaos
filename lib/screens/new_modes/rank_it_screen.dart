@@ -2,8 +2,13 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 import '../../data/rank_it_prompts.dart';
+import '../../services/haptic_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/sound_service.dart';
 
 enum _RankPhase { setup, ranking, reveal }
 
@@ -34,6 +39,9 @@ class _RankItScreenState extends State<RankItScreen> {
     _players.length; // just to ensure state
   }
 
+  bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
+  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
+
   void _startGame() {
     _roundsPlayed = 0;
     _pickPrompt();
@@ -52,13 +60,15 @@ class _RankItScreenState extends State<RankItScreen> {
   }
 
   void _lockRanking() {
-    HapticFeedback.mediumImpact();
+    HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled);
+    SoundService.instance.play(SoundEvent.cardReveal, soundEnabled: _soundEnabled);
     _lockedRanking = List.from(_rankingItems);
     setState(() => _phase = _RankPhase.reveal);
   }
 
   void _nextRound() {
     _roundsPlayed++;
+    SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: _soundEnabled);
     if (_roundsPlayed >= _totalRounds) {
       setState(() => _phase = _RankPhase.setup);
     } else {
@@ -68,10 +78,21 @@ class _RankItScreenState extends State<RankItScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.background,
-    body: SafeArea(child: _body()),
-  );
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _phase == _RankPhase.setup,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_phase == _RankPhase.setup) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(child: _body()),
+      ),
+    );
+  }
 
   Widget _body() {
     switch (_phase) {
@@ -88,9 +109,9 @@ class _RankItScreenState extends State<RankItScreen> {
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text('${_players.length} players', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
           Row(children: [
-            _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticFeedback.lightImpact(); setState(() => _players.removeLast()); }, AppColors.dareRed),
+            _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() => _players.removeLast()); }, AppColors.dareRed),
             const SizedBox(width: 10),
-            _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticFeedback.lightImpact(); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
+            _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
           ]),
         ]),
         const SizedBox(height: 10),
@@ -138,7 +159,7 @@ class _RankItScreenState extends State<RankItScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           itemCount: _rankingItems.length,
           onReorder: (oldI, newI) {
-            HapticFeedback.selectionClick();
+            HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
             setState(() {
               if (newI > oldI) newI--;
               final item = _rankingItems.removeAt(oldI);

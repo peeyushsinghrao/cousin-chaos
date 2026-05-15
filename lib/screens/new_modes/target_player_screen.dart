@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
 import 'dart:async';
+import '../../core/widgets/leave_game_dialog.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/player_manager.dart';
@@ -116,7 +117,14 @@ class _TargetPlayerScreenState extends State<TargetPlayerScreen> {
     // Add "Everyone" option
     final List<String> wheelItems = [...players.map((p) => p.name), 'Everyone'];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -329,6 +337,7 @@ class _TargetPlayerScreenState extends State<TargetPlayerScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

@@ -380,7 +380,7 @@ class _ButtonPulseAnimationState extends State<ButtonPulseAnimation>
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: widget.pulseColor.withOpacity(0.4 * (1 - _animation.value)),
+                color: widget.pulseColor.withAlpha((0.4 * (1 - _animation.value) * 255).round()),
                 blurRadius: 0,
                 spreadRadius: spread,
               ),

@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import 'dart:async';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 
 class ActItOutScreen extends StatefulWidget {
   const ActItOutScreen({super.key});
@@ -104,7 +105,14 @@ class _ActItOutScreenState extends State<ActItOutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -260,6 +268,7 @@ class _ActItOutScreenState extends State<ActItOutScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

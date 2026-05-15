@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
+import '../../services/haptic_service.dart';
+import '../../services/preferences_service.dart';
+import '../../services/sound_service.dart';
 
 enum _TTLPhase { setup, passDevice, enter, vote, reveal, score }
 
@@ -35,6 +40,9 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
     super.dispose();
   }
 
+  bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
+  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
+
   void _startGame() {
     _scores.clear();
     for (final p in _players) _scores[p] = 0;
@@ -59,6 +67,7 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
     _submittedStatements = stmts..shuffle();
     _submittedLieIndex = _submittedStatements.indexOf(stmts[_lieIndex]);
     if (_submittedLieIndex == -1) _submittedLieIndex = 0;
+    SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
     setState(() => _phase = _TTLPhase.vote);
   }
 
@@ -77,6 +86,10 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
       ),
     );
     if (confirmed == true && mounted) {
+      SoundService.instance.play(
+        index == _submittedLieIndex ? SoundEvent.win : SoundEvent.wrong,
+        soundEnabled: _soundEnabled,
+      );
       setState(() {
         _guessedIndex = index;
         _phase = _TTLPhase.reveal;
@@ -87,6 +100,7 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
   bool get _guessedCorrectly => _guessedIndex == _submittedLieIndex;
 
   void _nextRound() {
+    SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: _soundEnabled);
     final currentPlayer = _players[_currentPlayerIndex];
     if (!_guessedCorrectly) {
       _scores[currentPlayer] = (_scores[currentPlayer] ?? 0) + 1;
@@ -107,10 +121,21 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.background,
-    body: SafeArea(child: _body()),
-  );
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _phase == _TTLPhase.setup,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_phase == _TTLPhase.setup) return;
+        final leave = await showLeaveGameDialog(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(child: _body()),
+      ),
+    );
+  }
 
   Widget _body() {
     switch (_phase) {
@@ -289,9 +314,9 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
   Widget _playerHeader() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
     Text('${_players.length} players', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
     Row(children: [
-      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticFeedback.lightImpact(); setState(() => _players.removeLast()); }, AppColors.dareRed),
+      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() => _players.removeLast()); }, AppColors.dareRed),
       const SizedBox(width: 10),
-      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticFeedback.lightImpact(); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
+      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
     ]),
   ]);
 

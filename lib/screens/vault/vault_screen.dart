@@ -77,7 +77,8 @@ class _VaultScreenState extends State<VaultScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
+                    SizedBox(
+                      height: 140,
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
@@ -141,10 +142,10 @@ class _VaultScreenState extends State<VaultScreen> {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildBadgeCard('🔥', 'First Flame', true),
-                  _buildBadgeCard('👑', 'Chaos Master', true),
-                  _buildBadgeCard('🗝️', 'Secret Finder', false),
-                  _buildBadgeCard('🌀', 'Double Trouble', true),
+                  _buildBadgeCard(Icons.local_fire_department_rounded, 'First Flame', true),
+                  _buildBadgeCard(Icons.workspace_premium_rounded, 'Chaos Master', true),
+                  _buildBadgeCard(Icons.key_rounded, 'Secret Finder', false),
+                  _buildBadgeCard(Icons.cyclone_rounded, 'Double Trouble', true),
                 ],
               ),
               const SizedBox(height: 24),
@@ -328,7 +329,7 @@ class _VaultScreenState extends State<VaultScreen> {
     );
   }
 
-  Widget _buildBadgeCard(String icon, String label, bool unlocked) {
+  Widget _buildBadgeCard(IconData icon, String label, bool unlocked) {
     return GlassCard(
       borderRadius: 20,
       padding: const EdgeInsets.all(16),
@@ -343,7 +344,7 @@ class _VaultScreenState extends State<VaultScreen> {
                 color: AppColors.primary.withAlpha(31),
               ),
               padding: const EdgeInsets.all(16),
-              child: Text(icon, style: const TextStyle(fontSize: 24)),
+              child: Icon(icon, color: unlocked ? AppColors.neonYellow : AppColors.textMuted, size: 28),
             ),
             const SizedBox(height: 12),
             Text(label,
