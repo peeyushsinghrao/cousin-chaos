@@ -3,10 +3,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/impostor_data.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/navigation/page_transitions.dart';
 import '../../models/impostor_player.dart';
+import '../../services/preferences_service.dart';
+import '../../services/sound_service.dart';
 
 enum ImpostorPhase { passDevice, reveal, discussion, vote, result }
 
@@ -64,14 +66,20 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
   // Vote
   String? _votedPlayerId;
 
+  bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
+
   @override
   void initState() {
     super.initState();
-    _flipController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _flipAnimation = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _flipController, curve: Curves.easeInOut));
+    _flipController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _flipAnimation = Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(parent: _flipController, curve: Curves.easeInOut));
 
-    _shakeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 80));
-    _shakeAnimation = Tween<double>(begin: -3, end: 3).animate(_shakeController);
+    _shakeController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 80));
+    _shakeAnimation =
+        Tween<double>(begin: -3, end: 3).animate(_shakeController);
 
     _initializeGame();
   }
@@ -89,8 +97,10 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
     _players = List.from(widget.players)..shuffle();
     _currentPlayerIndex = 0;
 
-    final words = widget.customWords ?? ImpostorData.categories[widget.category] ?? [];
-    _secretWord = words.isEmpty ? 'Mystery' : words[_random.nextInt(words.length)];
+    final words = widget.customWords ??
+        ImpostorData.categories[widget.category] ?? [];
+    _secretWord =
+        words.isEmpty ? 'Mystery' : words[_random.nextInt(words.length)];
 
     final shuffledIds = _players.map((p) => p.id).toList()..shuffle();
     _impostorIds = shuffledIds.take(widget.impostorCount).toList();
@@ -108,6 +118,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
   }
 
   void _advanceToReveal() {
+    SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
     setState(() {
       _phase = ImpostorPhase.reveal;
       _hasFlipped = false;
@@ -129,6 +140,9 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
         _shakeController.stop();
         _shakeController.reset();
         _flipController.forward();
+        SoundService.instance
+            .play(SoundEvent.cardReveal, soundEnabled: _soundEnabled);
+        HapticFeedback.heavyImpact();
       }
     });
   }
@@ -151,6 +165,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
 
   void _onGotIt() {
     HapticFeedback.lightImpact();
+    SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: _soundEnabled);
     final isLast = _currentPlayerIndex >= _players.length - 1;
     if (isLast) {
       _startDiscussion();
@@ -169,13 +184,22 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
     setState(() => _phase = ImpostorPhase.discussion);
     if (!widget.timeLimitEnabled) return;
     _discussionTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       setState(() {
         _timeLeft--;
-        if (_timeLeft <= 10 && _timeLeft > 0) HapticFeedback.lightImpact();
+        if (_timeLeft <= 5 && _timeLeft > 0) {
+          HapticFeedback.lightImpact();
+          SoundService.instance
+              .play(SoundEvent.countdown, soundEnabled: _soundEnabled);
+        }
         if (_timeLeft <= 0) {
           t.cancel();
           HapticFeedback.heavyImpact();
+          SoundService.instance
+              .play(SoundEvent.timerEnd, soundEnabled: _soundEnabled);
           _goToVote();
         }
       });
@@ -192,19 +216,36 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Confirm Vote?', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Confirm Vote?',
+            style: GoogleFonts.poppins(
+                color: Colors.white, fontWeight: FontWeight.bold)),
         content: Text(
           'You\'re accusing ${_players.firstWhere((p) => p.id == playerId).name}.',
           style: GoogleFonts.poppins(color: AppColors.textSecondary),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.poppins(color: AppColors.textSecondary))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Vote', style: GoogleFonts.poppins(color: AppColors.dareRed, fontWeight: FontWeight.w700))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel',
+                  style:
+                      GoogleFonts.poppins(color: AppColors.textSecondary))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Vote',
+                  style: GoogleFonts.poppins(
+                      color: AppColors.dareRed,
+                      fontWeight: FontWeight.w700))),
         ],
       ),
     );
     if (confirmed == true && mounted) {
+      final won = _impostorIds.contains(playerId);
+      SoundService.instance.play(
+        won ? SoundEvent.win : SoundEvent.wrong,
+        soundEnabled: _soundEnabled,
+      );
       setState(() {
         _votedPlayerId = playerId;
         _phase = ImpostorPhase.result;
@@ -227,12 +268,25 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
           context: context,
           builder: (_) => AlertDialog(
             backgroundColor: AppColors.surfaceLight,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text('Leave Game?', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
-            content: Text('Progress will be lost.', style: GoogleFonts.poppins(color: AppColors.textSecondary)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20)),
+            title: Text('Leave Game?',
+                style: GoogleFonts.poppins(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+            content: Text('Progress will be lost.',
+                style:
+                    GoogleFonts.poppins(color: AppColors.textSecondary)),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Keep Playing', style: GoogleFonts.poppins(color: AppColors.textSecondary))),
-              TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Leave', style: GoogleFonts.poppins(color: AppColors.dareRed))),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('Keep Playing',
+                      style: GoogleFonts.poppins(
+                          color: AppColors.textSecondary))),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('Leave',
+                      style: GoogleFonts.poppins(
+                          color: AppColors.dareRed))),
             ],
           ),
         );
@@ -247,15 +301,20 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
 
   Widget _buildPhase() {
     switch (_phase) {
-      case ImpostorPhase.passDevice: return _buildPassDevice();
-      case ImpostorPhase.reveal: return _buildReveal();
-      case ImpostorPhase.discussion: return _buildDiscussion();
-      case ImpostorPhase.vote: return _buildVote();
-      case ImpostorPhase.result: return _buildResult();
+      case ImpostorPhase.passDevice:
+        return _buildPassDevice();
+      case ImpostorPhase.reveal:
+        return _buildReveal();
+      case ImpostorPhase.discussion:
+        return _buildDiscussion();
+      case ImpostorPhase.vote:
+        return _buildVote();
+      case ImpostorPhase.result:
+        return _buildResult();
     }
   }
 
-  // ─── Phase 1: Pass Device ───────────────────────────────────────────────────
+  // ─── Phase 1: Pass Device ──────────────────────────────────────────────────
   Widget _buildPassDevice() {
     final player = _players[_currentPlayerIndex];
     return Padding(
@@ -265,13 +324,20 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
         children: [
           const Icon(Icons.lock_rounded, size: 64, color: AppColors.primaryNeon),
           const SizedBox(height: 32),
-          Text('Pass to', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 18)),
+          Text('Pass to',
+              style: GoogleFonts.poppins(
+                  color: AppColors.textSecondary, fontSize: 18)),
           const SizedBox(height: 8),
-          Text(player.name, style: GoogleFonts.poppins(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900)),
+          Text(player.name,
+              style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900)),
           const SizedBox(height: 8),
           Text(
             '${_currentPlayerIndex + 1} of ${_players.length}',
-            style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 14),
+            style:
+                GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 14),
           ),
           const SizedBox(height: 64),
           SizedBox(
@@ -280,10 +346,15 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.neonPink,
                 padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
               ),
               onPressed: _advanceToReveal,
-              child: Text('PASS DEVICE', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+              child: Text('PASS DEVICE',
+                  style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
             ),
           ),
         ],
@@ -291,7 +362,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
     );
   }
 
-  // ─── Phase 2: Card Reveal ────────────────────────────────────────────────────
+  // ─── Phase 2: Card Reveal ─────────────────────────────────────────────────
   Widget _buildReveal() {
     final player = _players[_currentPlayerIndex];
     final isImpostor = _impostorIds.contains(player.id);
@@ -301,7 +372,11 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(player.name, style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(player.name,
+              style: GoogleFonts.poppins(
+                  color: AppColors.textSecondary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 24),
           GestureDetector(
             onLongPressStart: _onHoldStart,
@@ -312,7 +387,8 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
               builder: (_, __) {
                 final angle = _flipAnimation.value * pi;
                 final showBack = _flipAnimation.value > 0.5;
-                final shakeX = _isHolding && !_hasFlipped ? _shakeAnimation.value : 0.0;
+                final shakeX =
+                    _isHolding && !_hasFlipped ? _shakeAnimation.value : 0.0;
                 return Transform(
                   alignment: Alignment.center,
                   transform: Matrix4.identity()
@@ -323,7 +399,9 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
                       ? Transform(
                           alignment: Alignment.center,
                           transform: Matrix4.identity()..rotateY(pi),
-                          child: isImpostor ? _buildImpostorCard() : _buildCivilianCard(),
+                          child: isImpostor
+                              ? _buildImpostorCard()
+                              : _buildCivilianCard(),
                         )
                       : _buildFrontCard(),
                 );
@@ -334,29 +412,39 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
           if (!_hasFlipped)
             Text(
               'Hold the card to reveal your role',
-              style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 14),
+              style: GoogleFonts.poppins(
+                  color: AppColors.textMuted, fontSize: 14),
               textAlign: TextAlign.center,
             ),
           AnimatedOpacity(
             opacity: _hasFlipped ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 300),
             child: AnimatedSlide(
-              offset: _hasFlipped ? Offset.zero : const Offset(0, 0.3),
+              offset:
+                  _hasFlipped ? Offset.zero : const Offset(0, 0.3),
               duration: const Duration(milliseconds: 300),
               child: Column(
                 children: [
-                  Text('Pass device to next player', style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 13)),
+                  Text('Pass device to next player',
+                      style: GoogleFonts.poppins(
+                          color: AppColors.textMuted, fontSize: 13)),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.neonPink,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                       ),
                       onPressed: _hasFlipped ? _onGotIt : null,
-                      child: Text('GOT IT!', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                      child: Text('GOT IT!',
+                          style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800)),
                     ),
                   ),
                 ],
@@ -375,15 +463,23 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF0E0820),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.primaryNeon.withAlpha(180), width: 2),
-        boxShadow: [BoxShadow(color: AppColors.primaryNeon.withAlpha(60), blurRadius: 30, spreadRadius: 2)],
+        border: Border.all(
+            color: AppColors.primaryNeon.withAlpha(180), width: 2),
+        boxShadow: [
+          BoxShadow(
+              color: AppColors.primaryNeon.withAlpha(60),
+              blurRadius: 30,
+              spreadRadius: 2)
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.lock_rounded, size: 64, color: AppColors.primaryNeon),
           const SizedBox(height: 16),
-          Text('Hold to reveal', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 16)),
+          Text('Hold to reveal',
+              style: GoogleFonts.poppins(
+                  color: AppColors.textSecondary, fontSize: 16)),
         ],
       ),
     );
@@ -400,17 +496,29 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.truthBlue.withAlpha(200), width: 2),
-        boxShadow: [BoxShadow(color: AppColors.truthBlue.withAlpha(60), blurRadius: 30)],
+        border: Border.all(
+            color: AppColors.truthBlue.withAlpha(200), width: 2),
+        boxShadow: [
+          BoxShadow(
+              color: AppColors.truthBlue.withAlpha(60), blurRadius: 30)
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('Find the Impostor!', style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 13)),
+          Text('Find the Impostor!',
+              style: GoogleFonts.poppins(
+                  color: AppColors.textMuted, fontSize: 13)),
           const SizedBox(height: 12),
-          Text(_secretWord, style: GoogleFonts.poppins(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900), textAlign: TextAlign.center),
+          Text(_secretWord,
+              style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900),
+              textAlign: TextAlign.center),
           const SizedBox(height: 16),
-          const Icon(Icons.groups_rounded, color: AppColors.truthBlue, size: 48),
+          const Icon(Icons.groups_rounded,
+              color: AppColors.truthBlue, size: 48),
         ],
       ),
     );
@@ -427,28 +535,42 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.dareRed.withAlpha(200), width: 2),
-        boxShadow: [BoxShadow(color: AppColors.dareRed.withAlpha(60), blurRadius: 30)],
+        border: Border.all(
+            color: AppColors.dareRed.withAlpha(200), width: 2),
+        boxShadow: [
+          BoxShadow(
+              color: AppColors.dareRed.withAlpha(60), blurRadius: 30)
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.visibility_off_rounded, color: AppColors.dareRed, size: 56),
+          const Icon(Icons.visibility_off_rounded,
+              color: AppColors.dareRed, size: 56),
           const SizedBox(height: 12),
-          Text('IMPOSTOR', style: GoogleFonts.poppins(color: AppColors.neonPink, fontSize: 34, fontWeight: FontWeight.w900)),
+          Text('IMPOSTOR',
+              style: GoogleFonts.poppins(
+                  color: AppColors.neonPink,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900)),
           if (widget.showHintToImpostor) ...[
             const SizedBox(height: 12),
-            const Icon(Icons.lightbulb_rounded, color: AppColors.neonYellow, size: 20),
-            Text('Blend in — guess the word!', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 12)),
+            const Icon(Icons.lightbulb_rounded,
+                color: AppColors.neonYellow, size: 20),
+            Text('Blend in — guess the word!',
+                style: GoogleFonts.poppins(
+                    color: AppColors.textSecondary, fontSize: 12)),
           ],
         ],
       ),
     );
   }
 
-  // ─── Phase 3: Discussion ─────────────────────────────────────────────────────
+  // ─── Phase 3: Discussion ──────────────────────────────────────────────────
   Widget _buildDiscussion() {
-    final timerColor = _timeLeft <= 10 ? AppColors.dareRed : (_timeLeft <= 30 ? AppColors.neonOrange : Colors.white);
+    final timerColor = _timeLeft <= 10
+        ? AppColors.dareRed
+        : (_timeLeft <= 30 ? AppColors.neonOrange : Colors.white);
     final mm = _timeLeft ~/ 60;
     final ss = _timeLeft % 60;
 
@@ -457,19 +579,30 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.forum_rounded, color: AppColors.neonPink, size: 80),
+          const Icon(Icons.forum_rounded,
+              color: AppColors.neonPink, size: 80),
           const SizedBox(height: 24),
-          Text('TIME TO DISCUSS', style: GoogleFonts.poppins(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 1)),
+          Text('TIME TO DISCUSS',
+              style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1)),
           const SizedBox(height: 12),
-          Text('Discuss who the impostor might be.\nEveryone shares their thoughts!',
-            style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14, height: 1.6),
+          Text(
+            'Discuss who the impostor might be.\nEveryone shares their thoughts!',
+            style: GoogleFonts.poppins(
+                color: AppColors.textSecondary, fontSize: 14, height: 1.6),
             textAlign: TextAlign.center,
           ),
           if (widget.timeLimitEnabled) ...[
             const SizedBox(height: 40),
             Text(
               '${mm.toString().padLeft(2, '0')}:${ss.toString().padLeft(2, '0')}',
-              style: GoogleFonts.poppins(color: timerColor, fontSize: 64, fontWeight: FontWeight.w900),
+              style: GoogleFonts.poppins(
+                  color: timerColor,
+                  fontSize: 64,
+                  fontWeight: FontWeight.w900),
             ),
           ] else
             const SizedBox(height: 40),
@@ -480,10 +613,15 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.dareRed,
                 padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
               ),
               onPressed: _goToVote,
-              child: Text('FINISH & VOTE', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+              child: Text('FINISH & VOTE',
+                  style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
             ),
           ),
         ],
@@ -491,7 +629,7 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
     );
   }
 
-  // ─── Phase 4: Vote ───────────────────────────────────────────────────────────
+  // ─── Phase 4: Vote ────────────────────────────────────────────────────────
   Widget _buildVote() {
     return Column(
       children: [
@@ -499,9 +637,16 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              Text('WHO IS THE IMPOSTOR?', style: GoogleFonts.poppins(color: AppColors.dareRed, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1)),
+              Text('WHO IS THE IMPOSTOR?',
+                  style: GoogleFonts.poppins(
+                      color: AppColors.dareRed,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1)),
               const SizedBox(height: 8),
-              Text('Tap to vote', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14)),
+              Text('Tap to vote',
+                  style: GoogleFonts.poppins(
+                      color: AppColors.textSecondary, fontSize: 14)),
             ],
           ),
         ),
@@ -519,20 +664,32 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.dareRed.withAlpha(80)),
+                    border: Border.all(
+                        color: AppColors.dareRed.withAlpha(80)),
                   ),
                   child: Row(
                     children: [
                       Container(
                         width: 40,
                         height: 40,
-                        decoration: BoxDecoration(color: AppColors.dareRed.withAlpha(40), borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(
+                            color: AppColors.dareRed.withAlpha(40),
+                            borderRadius: BorderRadius.circular(12)),
                         alignment: Alignment.center,
-                        child: Text('${i + 1}', style: GoogleFonts.poppins(color: AppColors.dareRed, fontWeight: FontWeight.w800)),
+                        child: Text('${i + 1}',
+                            style: GoogleFonts.poppins(
+                                color: AppColors.dareRed,
+                                fontWeight: FontWeight.w800)),
                       ),
                       const SizedBox(width: 16),
-                      Expanded(child: Text(p.name, style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
-                      const Icon(Icons.how_to_vote_rounded, color: AppColors.dareRed, size: 20),
+                      Expanded(
+                          child: Text(p.name,
+                              style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600))),
+                      const Icon(Icons.how_to_vote_rounded,
+                          color: AppColors.dareRed, size: 20),
                     ],
                   ),
                 ),
@@ -544,9 +701,11 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
     );
   }
 
-  // ─── Phase 5: Result ─────────────────────────────────────────────────────────
+  // ─── Phase 5: Result ──────────────────────────────────────────────────────
   Widget _buildResult() {
-    final impostorNames = _impostorIds.map((id) => _players.firstWhere((p) => p.id == id).name).toList();
+    final impostorNames = _impostorIds
+        .map((id) => _players.firstWhere((p) => p.id == id).name)
+        .toList();
     final won = _civiliansWin;
 
     return Padding(
@@ -581,18 +740,28 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
               children: [
                 Text(
                   'The impostor${impostorNames.length > 1 ? 's were' : ' was'}:',
-                  style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14),
+                  style: GoogleFonts.poppins(
+                      color: AppColors.textSecondary, fontSize: 14),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   impostorNames.join(', '),
-                  style: GoogleFonts.poppins(color: AppColors.neonPink, fontSize: 22, fontWeight: FontWeight.w800),
+                  style: GoogleFonts.poppins(
+                      color: AppColors.neonPink,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                Text('The secret word was:', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14)),
+                Text('The secret word was:',
+                    style: GoogleFonts.poppins(
+                        color: AppColors.textSecondary, fontSize: 14)),
                 const SizedBox(height: 8),
-                Text(_secretWord, style: GoogleFonts.poppins(color: AppColors.truthBlue, fontSize: 26, fontWeight: FontWeight.w900)),
+                Text(_secretWord,
+                    style: GoogleFonts.poppins(
+                        color: AppColors.truthBlue,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900)),
               ],
             ),
           ),
@@ -603,16 +772,23 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.neonPink,
                 padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
               ),
               onPressed: () => setState(() => _initializeGame()),
-              child: Text('PLAY AGAIN', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+              child: Text('PLAY AGAIN',
+                  style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
             ),
           ),
           const SizedBox(height: 12),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Leave', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 16)),
+            child: Text('Leave',
+                style: GoogleFonts.poppins(
+                    color: AppColors.textSecondary, fontSize: 16)),
           ),
         ],
       ),

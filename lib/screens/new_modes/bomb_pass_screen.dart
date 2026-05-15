@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'dart:math';
 import 'dart:async';
 import '../../core/theme/app_colors.dart';
+import '../../services/preferences_service.dart';
+import '../../services/sound_service.dart';
 
 class BombPassScreen extends StatefulWidget {
   const BombPassScreen({super.key});
@@ -18,7 +21,7 @@ class _BombPassScreenState extends State<BombPassScreen> {
   bool _isPlaying = false;
   bool _isExploded = false;
   String _currentTask = '';
-  
+
   Timer? _bombTimer;
   Timer? _tickTimer;
   int _timeUntilExplosion = 0;
@@ -44,31 +47,36 @@ class _BombPassScreenState extends State<BombPassScreen> {
   }
 
   void _startGame() {
+    final soundEnabled = context.read<PreferencesService>().soundEnabled;
+    SoundService.instance.play(SoundEvent.tap, soundEnabled: soundEnabled);
+
     setState(() {
       _isPlaying = true;
       _isExploded = false;
     });
-    
+
     _nextTask();
 
     // Bomb explodes between 15 and 45 seconds
     _timeUntilExplosion = _random.nextInt(31) + 15;
-    
+
     _bombTimer = Timer(Duration(seconds: _timeUntilExplosion), _explodeBomb);
-    
+
     // Ticking effect gets faster
     _scheduleTick(_timeUntilExplosion.toDouble());
   }
 
   void _scheduleTick(double timeLeft) {
     if (!_isPlaying || _isExploded) return;
-    
+
     HapticFeedback.selectionClick();
-    
+    final soundEnabled = context.read<PreferencesService>().soundEnabled;
+    SoundService.instance.play(SoundEvent.bombTick, soundEnabled: soundEnabled);
+
     // Calculate next tick interval (gets faster as time runs out)
     double ratio = timeLeft / 45.0; // max time 45s
     int delayMs = max(100, (1000 * ratio).toInt());
-    
+
     _tickTimer = Timer(Duration(milliseconds: delayMs), () {
       _scheduleTick(timeLeft - (delayMs / 1000.0));
     });
@@ -76,6 +84,8 @@ class _BombPassScreenState extends State<BombPassScreen> {
 
   void _nextTask() {
     HapticFeedback.lightImpact();
+    final soundEnabled = context.read<PreferencesService>().soundEnabled;
+    SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: soundEnabled);
     setState(() {
       _currentTask = _tasks[_random.nextInt(_tasks.length)];
     });
@@ -84,10 +94,13 @@ class _BombPassScreenState extends State<BombPassScreen> {
   void _explodeBomb() {
     _tickTimer?.cancel();
     HapticFeedback.vibrate();
-    
-    for(int i=0; i<10; i++) {
+
+    final soundEnabled = context.read<PreferencesService>().soundEnabled;
+    SoundService.instance.play(SoundEvent.explosion, soundEnabled: soundEnabled);
+
+    for (int i = 0; i < 10; i++) {
       Future.delayed(Duration(milliseconds: i * 100), () {
-        if(mounted) HapticFeedback.heavyImpact();
+        if (mounted) HapticFeedback.heavyImpact();
       });
     }
 
@@ -125,7 +138,10 @@ class _BombPassScreenState extends State<BombPassScreen> {
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: RadialGradient(
-            colors: [_isPlaying ? AppColors.dareRed.withAlpha(50) : AppColors.truthBlue.withAlpha(40), AppColors.background],
+            colors: [
+              _isPlaying ? AppColors.dareRed.withAlpha(50) : AppColors.truthBlue.withAlpha(40),
+              AppColors.background
+            ],
             radius: 1.2,
             center: Alignment.topCenter,
           ),
@@ -190,12 +206,12 @@ class _BombPassScreenState extends State<BombPassScreen> {
                 ),
               ),
             ],
-            
             if (_isPlaying) ...[
               Pulse(
                 infinite: true,
                 duration: const Duration(milliseconds: 500),
-                child: const Icon(Icons.local_fire_department_rounded, color: AppColors.dareRed, size: 150),
+                child: const Icon(Icons.local_fire_department_rounded,
+                    color: AppColors.dareRed, size: 150),
               ),
               const SizedBox(height: 48),
               Container(
@@ -270,6 +286,9 @@ class _BombPassScreenState extends State<BombPassScreen> {
   }
 
   Widget _buildExplosionScreen() {
+    final soundEnabled = context.read<PreferencesService>().soundEnabled;
+    SoundService.instance.play(SoundEvent.wrong, soundEnabled: soundEnabled);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(

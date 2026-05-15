@@ -541,12 +541,18 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
             ),
           );
         }
+        final playerManager = context.read<PlayerManager>();
+        final currentPlayer = playerManager.players.isNotEmpty
+            ? playerManager.players[_currentPlayerIndex % playerManager.players.length]
+            : null;
         return SingleChildScrollView(
           key: const ValueKey('showCard'),
           child: PromptCard(
             playerName: _selectedPlayerName ?? 'Player',
             prompt: _currentPrompt!,
             onNext: _onNextPlayer,
+            onSkip: _handleSkip,
+            skipTokens: currentPlayer?.skipTokens ?? 0,
           ),
         );
     }
