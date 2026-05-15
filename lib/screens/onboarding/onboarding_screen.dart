@@ -27,7 +27,7 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'Your offline party hub is ready. Play Impostor with custom word packs, built-in categories, and no online features.',
+                'Your offline party hub is ready. Play all game modes with custom word packs, built-in categories, and no online features.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppColors.textSecondary,
                       height: 1.6,
@@ -36,7 +36,7 @@ class OnboardingScreen extends StatelessWidget {
               const SizedBox(height: 40),
               _buildFeatureTile(
                 icon: Icons.lock,
-                title: 'Offline-only Impostor',
+                title: 'Offline',
                 subtitle: 'Local play only with no online matchmaking or multiplayer systems.',
               ),
               const SizedBox(height: 16),
