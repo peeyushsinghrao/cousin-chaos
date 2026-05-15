@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 import '../../models/pack.dart';
 import '../../services/player_manager.dart';
 import '../../services/pack_manager.dart';
@@ -303,7 +304,14 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
     final playerManager = context.watch<PlayerManager>();
     final playerNames = playerManager.players.map((p) => p.name).toList();
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final should = await showLeaveGameDialog(context);
+        if (should == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
         child: SafeArea(
@@ -398,6 +406,7 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 

@@ -287,7 +287,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
             DisclaimerDialog.show(context, () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const PackSelectionScreen()),
+                slideUpRoute(const PackSelectionScreen()),
               );
             });
           },
@@ -326,7 +326,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
             DisclaimerDialog.show(context, () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SpeedChallengeScreen()),
+                slideUpRoute(const SpeedChallengeScreen()),
               );
             });
           },

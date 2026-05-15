@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/navigation/page_transitions.dart';
 import '../../services/pack_manager.dart';
 import '../../models/pack.dart';
 import '../../core/widgets/gradient_icon.dart';
@@ -287,7 +288,7 @@ class PackSelectionScreen extends StatelessWidget {
         HapticFeedback.lightImpact();
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const CustomPackScreen()),
+          slideUpRoute(const CustomPackScreen()),
         );
       },
       child: Container(

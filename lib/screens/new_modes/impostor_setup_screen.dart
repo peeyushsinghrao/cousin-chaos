@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/impostor_data.dart';
+import '../../core/navigation/page_transitions.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/impostor_player.dart';
 import '../../screens/new_modes/impostor_custom_pack_list_screen.dart';
@@ -45,29 +46,25 @@ class _ImpostorSetupScreenState extends State<ImpostorSetupScreen> {
     if (category == 'Custom Pack') {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => ImpostorCustomPackListScreen(
-            players: _players,
-            impostorCount: widget.impostorCount,
-            timeLimitEnabled: widget.timeLimitEnabled,
-            timeLimitSeconds: widget.timeLimitSeconds,
-          ),
-        ),
+        slideUpRoute(ImpostorCustomPackListScreen(
+          players: _players,
+          impostorCount: widget.impostorCount,
+          timeLimitEnabled: widget.timeLimitEnabled,
+          timeLimitSeconds: widget.timeLimitSeconds,
+        )),
       );
       return;
     }
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ImpostorGameScreen(
-          category: category,
-          players: _players,
-          impostorCount: widget.impostorCount,
-          timeLimitEnabled: widget.timeLimitEnabled,
-          timeLimitSeconds: widget.timeLimitSeconds,
-        ),
-      ),
+      slideUpRoute(ImpostorGameScreen(
+        category: category,
+        players: _players,
+        impostorCount: widget.impostorCount,
+        timeLimitEnabled: widget.timeLimitEnabled,
+        timeLimitSeconds: widget.timeLimitSeconds,
+      )),
     );
   }
 

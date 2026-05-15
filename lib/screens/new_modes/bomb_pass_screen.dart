@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'dart:math';
 import 'dart:async';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
 
@@ -114,7 +115,14 @@ class _BombPassScreenState extends State<BombPassScreen> {
   Widget build(BuildContext context) {
     if (_isExploded) return _buildExplosionScreen();
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final should = await showLeaveGameDialog(context);
+        if (should == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -282,6 +290,7 @@ class _BombPassScreenState extends State<BombPassScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 

@@ -7,6 +7,7 @@ import 'dart:math';
 import 'dart:async';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/modes_data.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
 
@@ -101,7 +102,14 @@ class _ChaosModeScreenState extends State<ChaosModeScreen> {
         ? Colors.white
         : (_currentEvent?.color ?? AppColors.background);
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final should = await showLeaveGameDialog(context);
+        if (should == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -123,6 +131,7 @@ class _ChaosModeScreenState extends State<ChaosModeScreen> {
         centerTitle: true,
       ),
       body: _isFlashing ? _buildFlashingScreen() : _buildEventScreen(),
+    ),
     );
   }
 

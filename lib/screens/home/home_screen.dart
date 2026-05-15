@@ -734,7 +734,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                      slideUpRoute(const SettingsScreen()),
                     );
                   },
                 ),

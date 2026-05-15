@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../core/navigation/page_transitions.dart';
 import '../../services/pack_manager.dart';
 import 'create_pack_screen.dart';
 
@@ -80,7 +81,7 @@ class CustomPacksScreen extends StatelessWidget {
             const SizedBox(height: 16),
             GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePackScreen()));
+                Navigator.push(context, slideUpRoute(const CreatePackScreen()));
               },
               child: GlassCard(
                 borderRadius: 28,

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'dart:math';
 import 'dart:async';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 import '../../services/player_manager.dart';
 import '../../models/player.dart';
 
@@ -100,7 +101,14 @@ class _LastStandingScreenState extends State<LastStandingScreen> {
 
     final isGameOver = _isPlaying && _activePlayers.length == 1;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final should = await showLeaveGameDialog(context);
+        if (should == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -131,6 +139,7 @@ class _LastStandingScreenState extends State<LastStandingScreen> {
         ),
         child: isGameOver ? _buildWinnerScreen() : _buildGameScreen(),
       ),
+    ),
     );
   }
 

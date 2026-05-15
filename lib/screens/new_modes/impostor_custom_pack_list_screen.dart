@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/navigation/page_transitions.dart';
 import '../../models/impostor_player.dart';
 import '../../models/impostor_word_pack.dart';
 import '../../services/impostor_pack_manager.dart';
@@ -52,9 +53,7 @@ class ImpostorCustomPackListScreen extends StatelessWidget {
             onPressed: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const ImpostorCustomPackEditorScreen(),
-                ),
+                slideUpRoute(const ImpostorCustomPackEditorScreen()),
               );
             },
           ),
@@ -115,9 +114,7 @@ class ImpostorCustomPackListScreen extends StatelessWidget {
                                   onPressed: () async {
                                     await Navigator.push(
                                       context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ImpostorCustomPackEditorScreen(pack: pack),
-                                      ),
+                                      slideUpRoute(ImpostorCustomPackEditorScreen(pack: pack)),
                                     );
                                   },
                                 ),
@@ -126,16 +123,14 @@ class ImpostorCustomPackListScreen extends StatelessWidget {
                                   onPressed: () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ImpostorGameScreen(
-                                          category: 'CUSTOM PACK',
-                                          players: players,
-                                          impostorCount: impostorCount,
-                                          timeLimitEnabled: timeLimitEnabled,
-                                          timeLimitSeconds: timeLimitSeconds,
-                                          customWords: pack.words,
-                                        ),
-                                      ),
+                                      slideUpRoute(ImpostorGameScreen(
+                                        category: 'CUSTOM PACK',
+                                        players: players,
+                                        impostorCount: impostorCount,
+                                        timeLimitEnabled: timeLimitEnabled,
+                                        timeLimitSeconds: timeLimitSeconds,
+                                        customWords: pack.words,
+                                      )),
                                     );
                                   },
                                 ),
@@ -155,7 +150,7 @@ class ImpostorCustomPackListScreen extends StatelessWidget {
         onPressed: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const ImpostorCustomPackEditorScreen()),
+            slideUpRoute(const ImpostorCustomPackEditorScreen()),
           );
         },
       ),
