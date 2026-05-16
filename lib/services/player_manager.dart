@@ -81,4 +81,12 @@ class PlayerManager extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  void resetAllSkipTokens() {
+    for (var player in _players) {
+      player.skipTokens = 0;
+    }
+    _savePlayers();
+    notifyListeners();
+  }
 }

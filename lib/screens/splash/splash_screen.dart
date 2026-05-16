@@ -38,6 +38,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _navigateToNext() {
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>

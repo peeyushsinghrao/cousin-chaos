@@ -45,14 +45,14 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             // Background Orbs
             _buildBackgroundOrbs(),
-            
+
             // Main Content
             SafeArea(
               child: Column(
                 children: [
                   // TopAppBar
                   _buildTopAppBar(),
-                  
+
                   // Tab content
                   Expanded(
                     child: IndexedStack(
@@ -70,7 +70,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               _buildGameModeGrid(),
                               const SizedBox(height: 40),
                               _buildStatsSection(),
-                              const SizedBox(height: 40),
                               const SizedBox(height: 120),
                             ],
                           ),
@@ -81,17 +80,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                
-                
-                // BottomNavBar
-                _buildBottomNavBar(),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // BottomNavBar — must be inside Stack as Positioned widget
+            _buildBottomNavBar(),
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildBackgroundOrbs() {

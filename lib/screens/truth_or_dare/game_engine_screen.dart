@@ -28,7 +28,7 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
   GamePhase _phase = GamePhase.spinPlayer;
   List<GameCardPrompt> _truths = [];
   List<GameCardPrompt> _dares = [];
-  
+
   String? _selectedPlayerName;
   String? _selectedType;
   GameCardPrompt? _currentPrompt;
@@ -61,9 +61,7 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
   void _loadDeck() {
     final playerManager = context.read<PlayerManager>();
     playerManager.resetScores();
-    for (final player in playerManager.players) {
-      playerManager.updatePlayerSkipTokens(player.id, 0);
-    }
+    playerManager.resetAllSkipTokens();
     final packManager = context.read<PackManager>();
     _is18Plus = packManager.hasAny18PlusSelected;
     final deck = packManager.getMergedDeck();
