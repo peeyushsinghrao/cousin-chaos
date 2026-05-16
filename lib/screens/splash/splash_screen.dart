@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../widgets/neon_button.dart';
 import '../home/home_screen.dart';
+import '../onboarding/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -37,12 +38,15 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  void _navigateToNext() {
+  void _navigateToNext() async {
     if (!mounted) return;
+    final seenOnboarding = await hasSeenOnboarding();
+    if (!mounted) return;
+    final destination =
+        seenOnboarding ? const HomeScreen() : const OnboardingScreen();
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const HomeScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => destination,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,
