@@ -26,9 +26,6 @@ class _StandaloneGameScreenState extends State<StandaloneGameScreen> {
   GameCardPrompt? _currentCard;
   bool _isLoading = true;
 
-  // Local Trivia Database
-  final List<Map<String, dynamic>> _triviaDb = TriviaData.questions;
-
   @override
   void initState() {
     super.initState();

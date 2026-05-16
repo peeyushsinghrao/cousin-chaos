@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/leave_game_dialog.dart';
 import '../../services/player_manager.dart';
@@ -19,7 +18,6 @@ class SecretMissionScreen extends StatefulWidget {
 }
 
 class _SecretMissionScreenState extends State<SecretMissionScreen> {
-  final Random _random = Random();
   SecretMissionPhase _currentPhase = SecretMissionPhase.setup;
   
   List<Player> _players = [];
@@ -277,7 +275,6 @@ class _SecretMissionScreenState extends State<SecretMissionScreen> {
   Widget _buildReviewResultsScreen() {
     final player = _players[_currentPlayerIndex];
     final mission = _playerMissions[player.id]!;
-    final isLast = _currentPlayerIndex == _players.length - 1;
 
     return FadeInRight(
       key: ValueKey('review_${player.id}'),

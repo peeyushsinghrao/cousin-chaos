@@ -34,8 +34,7 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
   GameCardPrompt? _currentPrompt;
   int _currentPlayerIndex = 0;
   bool _isLoadingApi = false;
-  bool _isPunishmentRound = false;
-  bool _showLeaderboard = false;
+
   List<String> _currentWheelItems = [];
   bool _is18Plus = false;
 
@@ -153,7 +152,6 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
 
     if (updatedTokens >= 3) {
       setState(() {
-        _isPunishmentRound = true;
         _currentPrompt = GameCardPrompt(
           id: 'punishment',
           text: 'GROUP DARE: Everyone performs a challenge together! No skips allowed.',
@@ -167,16 +165,9 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
     _onNextPlayer();
   }
 
-  void _toggleLeaderboard() {
-    setState(() {
-      _showLeaderboard = !_showLeaderboard;
-    });
-  }
-
   void _onNextPlayer() {
     final playerManager = context.read<PlayerManager>();
     setState(() {
-      _isPunishmentRound = false;
       _currentPlayerIndex = (_currentPlayerIndex + 1) % playerManager.players.length;
 
       if (widget.gameMode == GameMode.oneAtATime) {

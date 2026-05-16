@@ -43,6 +43,7 @@ class CousinChaosApp extends StatelessWidget {
       title: 'Cousin Chaos',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
+      color: AppColors.background,
       home: const SplashScreen(),
     );
   }

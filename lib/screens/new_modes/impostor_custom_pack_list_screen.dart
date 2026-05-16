@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/navigation/page_transitions.dart';
 import '../../models/impostor_player.dart';
-import '../../models/impostor_word_pack.dart';
 import '../../services/impostor_pack_manager.dart';
 import 'impostor_custom_pack_editor_screen.dart';
 import 'impostor_game_screen.dart';

@@ -10,7 +10,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/gradient_icon.dart';
 import '../../services/preferences_service.dart';
 import '../../core/constants/random_data.dart';
-import '../../models/pack.dart'; // We'll reuse GameCardPrompt or create simple strings
 
 class RandomChallengeScreen extends StatefulWidget {
   const RandomChallengeScreen({super.key});
