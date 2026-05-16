@@ -59,12 +59,16 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
   }
 
   void _loadDeck() {
+    final playerManager = context.read<PlayerManager>();
+    playerManager.resetScores();
+    for (final player in playerManager.players) {
+      playerManager.updatePlayerSkipTokens(player.id, 0);
+    }
     final packManager = context.read<PackManager>();
     _is18Plus = packManager.hasAny18PlusSelected;
     final deck = packManager.getMergedDeck();
     _truths = deck.where((p) => p.type == 'truth').toList();
     _dares = deck.where((p) => p.type == 'dare').toList();
-    // Preload matching API prompts in background
     _preloadApiPrompts();
   }
 
@@ -151,6 +155,9 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
     playerManager.updatePlayerSkipTokens(currentPlayer.id, updatedTokens);
 
     if (updatedTokens >= 3) {
+      for (final p in playerManager.players) {
+        playerManager.updatePlayerSkipTokens(p.id, 0);
+      }
       setState(() {
         _currentPrompt = GameCardPrompt(
           id: 'punishment',
@@ -315,29 +322,11 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: AppColors.surface,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            title: Text('Leave Game?', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700)),
-                            content: Text('Are you sure you want to quit?', style: GoogleFonts.poppins(color: AppColors.textSecondary)),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: Text('Stay', style: GoogleFonts.poppins(color: AppColors.textMuted)),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  Navigator.of(context).popUntil((route) => route.isFirst);
-                                },
-                                child: Text('Leave', style: GoogleFonts.poppins(color: AppColors.dareRed)),
-                              ),
-                            ],
-                          ),
-                        );
+                      onPressed: () async {
+                        final should = await showLeaveGameDialog(context);
+                        if (should == true && context.mounted) {
+                          Navigator.of(context).popUntil((route) => route.isFirst);
+                        }
                       },
                       icon: Container(
                         padding: const EdgeInsets.all(8),

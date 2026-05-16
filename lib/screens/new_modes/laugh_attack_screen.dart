@@ -17,6 +17,7 @@ class _LaughAttackScreenState extends State<LaughAttackScreen> {
   final Random _random = Random();
   String _currentChallenge = '';
   bool _someoneLaughed = false;
+  final Set<int> _recentIndices = {};
 
   final List<String> _challenges = [
     'Stare into the soul of the person to your left without blinking until someone laughs',
@@ -35,8 +36,14 @@ class _LaughAttackScreenState extends State<LaughAttackScreen> {
   }
 
   void _nextChallenge() {
+    int idx;
+    do {
+      idx = _random.nextInt(_challenges.length);
+    } while (_recentIndices.contains(idx) && _recentIndices.length < _challenges.length);
+    _recentIndices.add(idx);
+    if (_recentIndices.length >= _challenges.length) _recentIndices.clear();
     setState(() {
-      _currentChallenge = _challenges[_random.nextInt(_challenges.length)];
+      _currentChallenge = _challenges[idx];
       _someoneLaughed = false;
     });
   }

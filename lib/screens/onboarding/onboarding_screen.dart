@@ -64,7 +64,7 @@ class OnboardingScreen extends StatelessWidget {
                       PageRouteBuilder(
                         pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
                         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                          return FadeTransition(opacity: animation, child: child);
+                          return FadeTransition(opacity: animation, child: ColoredBox(color: AppColors.background, child: child));
                         },
                         transitionDuration: const Duration(milliseconds: 400),
                       ),

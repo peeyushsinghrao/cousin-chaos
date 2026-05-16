@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/leave_game_dialog.dart';
 import '../../data/most_likely_prompts.dart';
 import '../../services/haptic_service.dart';
+import '../../services/player_manager.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
 
@@ -34,7 +35,8 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
   int _roundsPlayed = 0;
   final Map<String, int> _scores = {};
   final Map<String, int> _tally = {};
-  String? _myPick;
+  final Map<String, String> _votes = {};
+  int _currentVoterIndex = 0;
 
   late AnimationController _pulseCtrl;
 
@@ -43,6 +45,17 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
     super.initState();
     _currentCategory = mostLikelyPrompts.keys.first;
     _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))..repeat(reverse: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final pm = context.read<PlayerManager>();
+      if (pm.players.isNotEmpty) {
+        setState(() {
+          _players.clear();
+          _players.addAll(pm.players.map((p) => p.name));
+          _nextId = _players.length + 1;
+        });
+      }
+    });
   }
 
   @override
@@ -68,7 +81,8 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
     final list = mostLikelyPrompts[_currentCategory]!;
     _currentPrompt = list[_rng.nextInt(list.length)];
     _tally.clear();
-    _myPick = null;
+    _votes.clear();
+    _currentVoterIndex = 0;
   }
 
   void _runCountdown() {
@@ -89,17 +103,22 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
   }
 
   void _pick(String player) {
-    if (_myPick != null) return;
+    if (_votes.length >= _players.length) return;
+    final voter = _players[_currentVoterIndex];
+    if (_votes.containsKey(voter)) return;
     HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled);
     SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
     setState(() {
-      _myPick = player;
+      _votes[voter] = player;
       _tally[player] = (_tally[player] ?? 0) + 1;
+      if (_currentVoterIndex < _players.length - 1) {
+        _currentVoterIndex++;
+      }
     });
   }
 
   void _lockIn() {
-    if (_myPick == null) return;
+    if (_votes.isEmpty) return;
     final sorted = _tally.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     if (sorted.isNotEmpty) {
       _scores[sorted.first.key] = (_scores[sorted.first.key] ?? 0) + 1;
@@ -188,40 +207,52 @@ class _MostLikelyScreenState extends State<MostLikelyScreen> with SingleTickerPr
     ),
   ]));
 
-  Widget _voting() => Padding(padding: const EdgeInsets.all(24), child: Column(children: [
-    Text('Round ${_roundsPlayed + 1} of $_totalRounds', style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 13)),
-    const SizedBox(height: 16),
-    Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.neonGreen.withAlpha(80))),
-      child: Text(_currentPrompt, style: GoogleFonts.poppins(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700, height: 1.5), textAlign: TextAlign.center),
-    ),
-    const SizedBox(height: 16),
-    Text('Point then tap their name', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 13)),
-    const SizedBox(height: 12),
-    Expanded(child: GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.5),
-      itemCount: _players.length,
-      itemBuilder: (_, i) {
-        final p = _players[i];
-        final sel = _myPick == p;
-        return GestureDetector(
-          onTap: () => _pick(p),
-          child: Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: sel ? AppColors.neonGreen.withAlpha(30) : AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: sel ? AppColors.neonGreen : AppColors.surfaceBright, width: sel ? 2 : 1),
+  Widget _voting() {
+    final allVoted = _votes.length >= _players.length;
+    final currentVoter = _currentVoterIndex < _players.length ? _players[_currentVoterIndex] : '';
+    return Padding(padding: const EdgeInsets.all(24), child: Column(children: [
+      Text('Round ${_roundsPlayed + 1} of $_totalRounds', style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 13)),
+      const SizedBox(height: 16),
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.neonGreen.withAlpha(80))),
+        child: Text(_currentPrompt, style: GoogleFonts.poppins(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700, height: 1.5), textAlign: TextAlign.center),
+      ),
+      const SizedBox(height: 12),
+      if (!allVoted)
+        Text('${currentVoter}, point and tap!', style: GoogleFonts.poppins(color: AppColors.neonGreen, fontSize: 13, fontWeight: FontWeight.w700))
+      else
+        Text('All votes in! (${_votes.length}/${_players.length})', style: GoogleFonts.poppins(color: AppColors.neonGreen, fontSize: 13, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 12),
+      Expanded(child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.5),
+        itemCount: _players.length,
+        itemBuilder: (_, i) {
+          final p = _players[i];
+          final voteCount = _tally[p] ?? 0;
+          final hasVotes = voteCount > 0;
+          return GestureDetector(
+            onTap: () => _pick(p),
+            child: Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: hasVotes ? AppColors.neonGreen.withAlpha(20) : AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: hasVotes ? AppColors.neonGreen : AppColors.surfaceBright, width: hasVotes ? 2 : 1),
+              ),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text(p, style: GoogleFonts.poppins(color: hasVotes ? AppColors.neonGreen : Colors.white, fontSize: 13, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+                if (hasVotes) Text('$voteCount vote${voteCount != 1 ? 's' : ''}', style: GoogleFonts.poppins(color: AppColors.neonGreen, fontSize: 10, fontWeight: FontWeight.w600)),
+              ]),
             ),
-            child: Text(p, style: GoogleFonts.poppins(color: sel ? AppColors.neonGreen : Colors.white, fontSize: 13, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
-          ),
-        );
-      },
-    )),
-    const SizedBox(height: 12),
-    _bottomBtn('LOCK IN', _myPick != null ? AppColors.neonGreen : AppColors.surface, _myPick != null ? _lockIn : null, textColor: _myPick != null ? AppColors.background : AppColors.textMuted),
-  ]));
+          );
+        },
+      )),
+      const SizedBox(height: 12),
+      _bottomBtn('LOCK IN', allVoted ? AppColors.neonGreen : AppColors.surface, allVoted ? _lockIn : null, textColor: allVoted ? AppColors.background : AppColors.textMuted),
+    ]));
+  }
 
   Widget _tallyView() {
     final sorted = _tally.entries.toList()..sort((a, b) => b.value.compareTo(a.value));

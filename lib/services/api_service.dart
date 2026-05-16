@@ -50,22 +50,18 @@ class ApiService {
 
   /// Fetch a batch of truths for pre-loading
   static Future<List<GameCardPrompt>> fetchTruths(int count, {bool is18Plus = false}) async {
-    final List<GameCardPrompt> truths = [];
-    for (int i = 0; i < count; i++) {
-      final prompt = await fetchTruth(is18Plus: is18Plus);
-      if (prompt != null) truths.add(prompt);
-    }
-    return truths;
+    final results = await Future.wait(
+      List.generate(count, (_) => fetchTruth(is18Plus: is18Plus)),
+    );
+    return results.whereType<GameCardPrompt>().toList();
   }
 
   /// Fetch a batch of dares for pre-loading
   static Future<List<GameCardPrompt>> fetchDares(int count, {bool is18Plus = false}) async {
-    final List<GameCardPrompt> dares = [];
-    for (int i = 0; i < count; i++) {
-      final prompt = await fetchDare(is18Plus: is18Plus);
-      if (prompt != null) dares.add(prompt);
-    }
-    return dares;
+    final results = await Future.wait(
+      List.generate(count, (_) => fetchDare(is18Plus: is18Plus)),
+    );
+    return results.whereType<GameCardPrompt>().toList();
   }
 
   /// Fetch Would You Rather

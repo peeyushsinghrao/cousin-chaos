@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/leave_game_dialog.dart';
 import '../../data/alibi_questions.dart';
 import '../../services/haptic_service.dart';
+import '../../services/player_manager.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
 
@@ -43,6 +44,17 @@ class _AlibiScreenState extends State<AlibiScreen> {
   void initState() {
     super.initState();
     _currentCategory = alibiQuestionsByCategory.keys.first;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final pm = context.read<PlayerManager>();
+      if (pm.players.isNotEmpty) {
+        setState(() {
+          _players.clear();
+          _players.addAll(pm.players.map((p) => p.name));
+          _nextId = _players.length + 1;
+        });
+      }
+    });
   }
 
   @override

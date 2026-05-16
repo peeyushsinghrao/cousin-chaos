@@ -1,0 +1,204 @@
+
+**Fix all bugs, logic issues, and dead code in the Cousin Chaos Flutter app. Here is the full list of what needs to be done:**
+
+---
+
+**🐛 BUG FIXES**
+
+**1. Reset skip tokens at game start**
+In `lib/screens/truth_or_dare/game_engine_screen.dart`, in the `_loadDeck()` method, reset all players' skip tokens to 0 using `playerManager.updatePlayerSkipTokens(player.id, 0)` for each player before the game begins.
+
+**2. Fix the shuffle-then-indexOf bug in Two Truths One Lie**
+In `lib/screens/new_modes/two_truths_one_lie_screen.dart`, in `_submitStatements()`, save the lie text BEFORE shuffling:
+```dart
+final lieText = stmts[_lieIndex];
+_submittedStatements = List.from(stmts)..shuffle();
+_submittedLieIndex = _submittedStatements.indexOf(lieText);
+if (_submittedLieIndex == -1) _submittedLieIndex = 0;
+```
+
+**3. Actually save sessions after each game ends**
+`SessionService.saveSession()` exists but is never called. Add a call at the end of every game mode's result/score screen. Specifically:
+- In `lib/screens/truth_or_dare/game_engine_screen.dart` when leaving or on game over, call `SessionService.saveSession(...)` with the mode name, player names, and the player with the highest score as winner.
+- Do the same in `lib/screens/new_modes/hot_seat_screen.dart` in `_buildScore()` on first build.
+- Do the same in `lib/screens/new_modes/most_likely_screen.dart` in `_scoreView()`.
+- Do the same in `lib/screens/new_modes/two_truths_one_lie_screen.dart` in the score phase.
+- Do the same in `lib/screens/new_modes/alibi_screen.dart` in `_verdictView()`.
+- For Impostor in `lib/screens/new_modes/impostor_game_screen.dart`, save when `_buildResult()` is first shown.
+
+**4. Fix sound playing inside build() in BombPassScreen**
+In `lib/screens/new_modes/bomb_pass_screen.dart`, the `_buildExplosionScreen()` widget calls `SoundService.play()` directly inside the build method. Move that sound call into `_explodeBomb()` instead, so it only fires once when the bomb actually explodes. Remove the sound call from `_buildExplosionScreen()`.
+
+**5. Add leave-game protection while Freeze Mode countdown is active**
+In `lib/screens/new_modes/freeze_mode_screen.dart`, the main `Scaffold` has no `PopScope`. Wrap it in a `PopScope` identical to the one already used on the frozen screen — showing a leave dialog when `_isPlaying` is true and the user tries to go back.
+
+**6. Fix Freeze Mode getting stuck after penalty is dismissed**
+In `lib/screens/new_modes/freeze_mode_screen.dart`, in `_showPenaltyPopup()`, after setting `_showPenalty = true`, also reset `_isPlaying = false`. Then in the "DONE" button handler inside `_buildPenaltyPopup()`, after `setState(() => _showPenalty = false)`, call `_startGame()` to restart the round automatically, or show a "Play Again" button instead of auto-restarting.
+
+**7. Fix BombPassScreen Play Again not resetting current task**
+In `lib/screens/new_modes/bomb_pass_screen.dart`, in the "PLAY AGAIN" `onTap`, also call `_nextTask()` to pick a fresh task:
+```dart
+onTap: () => setState(() {
+  _isExploded = false;
+  _nextTask();
+});
+```
+
+---
+
+**⚠️ LOGIC FIXES**
+
+**8. Parallelize API batch fetching**
+In `lib/services/api_service.dart`, replace the sequential `for` loops in `fetchTruths()` and `fetchDares()` with `Future.wait()`:
+```dart
+static Future<List<GameCardPrompt>> fetchTruths(int count, {bool is18Plus = false}) async {
+  final results = await Future.wait(
+    List.generate(count, (_) => fetchTruth(is18Plus: is18Plus))
+  );
+  return results.whereType<GameCardPrompt>().toList();
+}
+// Same for fetchDares
+```
+
+**9. Reset skip tokens after punishment**
+In `lib/screens/truth_or_dare/game_engine_screen.dart`, in `_handleSkip()`, when `updatedTokens >= 3`, after showing the GROUP DARE card, reset that player's skip tokens back to 0:
+
+```dart
+playerManager.updatePlayerSkipTokens(currentPlayer.id, 0);
+```
+
+**10. Fix Most Likely voting — only one vote is registered for what should be a group vote**
+In `lib/screens/new_modes/most_likely_screen.dart`, change the voting phase so each player votes independently. Replace the single `_myPick` variable with a `Map<String, String> _votes = {}` (player name → their pick). In `_pick(String player)`, instead of blocking after first pick, record it per-voter. Add a player selector at the top of the voting view so each person taps their name first, then picks. When all players have voted, enable LOCK IN. In `_lockIn()`, tally from the map instead of a single pick.
+
+**11. Sync player names from PlayerManager in all standalone game modes**
+In `lib/screens/new_modes/alibi_screen.dart`, `lib/screens/new_modes/most_likely_screen.dart`, `lib/screens/new_modes/hot_seat_screen.dart`, and `lib/screens/new_modes/two_truths_one_lie_screen.dart` — in `initState()`, read players from the global `PlayerManager` using `context.read<PlayerManager>().players.map((p) => p.name).toList()` and populate `_players` from it instead of defaulting to `['Player 1', 'Player 2', 'Player 3']`. Still allow adding/removing players locally after that.
+
+---
+
+**🗑️ CLEANUP**
+
+**12. Remove dead `resetScores()` method or wire it up**
+In `lib/services/player_manager.dart`, `resetScores()` is never called. Either call it at the start of `GameEngineScreen._loadDeck()`, or remove it. Prefer calling it.
+
+**13. Remove unused `getTruthsFromDeck()` and `getDaresFromDeck()` from PackManager**
+In `lib/services/pack_manager.dart`, delete both methods as they are never used anywhere.
+
+**14. Remove the duplicate leave-game dialog in GameEngineScreen**
+In `lib/screens/truth_or_dare/game_engine_screen.dart`, the back `IconButton` in the AppBar has its own inline `AlertDialog` for leaving. But there is already a `PopScope` at the root that handles this via `showLeaveGameDialog`. Remove the inline `AlertDialog` from the `IconButton.onPressed` and replace it with:
+
+```dart
+onPressed: () async {
+  final should = await showLeaveGameDialog(context);
+  if (should == true && context.mounted) Navigator.pop(context);
+},
+```
+
+**15. Add repeat-prevention for small challenge lists**
+In `lib/screens/new_modes/bomb_pass_screen.dart`, `lib/screens/new_modes/laugh_attack_screen.dart`, and `lib/screens/new_modes/speed_challenge_screen.dart` — add a recently-seen list to avoid immediate repeats:
+```dart
+final List<int> _recentIndices = [];
+// In _nextChallenge/_nextTask:
+int idx;
+do { idx = _random.nextInt(_tasks.length); } 
+while (_recentIndices.contains(idx) && _tasks.length > _recentIndices.length);
+_recentIndices.add(idx);
+if (_recentIndices.length > _tasks.length ~/ 2) _recentIndices.removeAt(0);
+```
+
+---
+
+**After all fixes, run `flutter analyze` and fix any new warnings introduced. Do not change any UI design, colors, or layout — only fix the logic and bugs listed above.**
+
+---
+You're right, I missed that! Let me add it explicitly.
+
+The white screen issue is in `app_theme.dart` — the `pageTransitionsTheme` is missing the `TargetPlatform.fuchsia` entry (which Flutter Web falls back to internally), AND the real fix needed is using `ZoomPageTransitionsBuilder` or simply no custom theme at all for web. But more importantly, the **Onboarding screen** has no navigation to Home after completion — it just gets stuck.
+
+Good. The onboarding navigation is fine — it does push to HomeScreen. The real culprit is confirmed: **Flutter Web runs as `linux` platform internally**, and even though `linux` is in the `pageTransitionsTheme`, `FadeUpwardsPageTransitionsBuilder` starts from a transparent/white state causing the flash. Here's the exact fix to add to the Replit prompt:
+
+---
+
+Here's the **white screen fix** to add to your Replit prompt:
+
+---
+
+**🔴 CRITICAL — White screen after Onboarding (add this FIRST in the prompt)**
+
+**Fix the blank white screen that appears after the Onboarding screen navigates to HomeScreen.**
+
+The root cause is in `lib/core/theme/app_theme.dart`. The `pageTransitionsTheme` uses `FadeUpwardsPageTransitionsBuilder` for all platforms, but Flutter Web runs internally as the `linux` platform — and `FadeUpwardsPageTransitionsBuilder` starts its animation from a fully transparent/white state, causing a white flash that freezes visually.
+
+**Fix it by replacing the entire `pageTransitionsTheme` block** in `AppTheme.darkTheme` with this:
+
+```dart
+pageTransitionsTheme: const PageTransitionsTheme(
+  builders: {
+    TargetPlatform.android: ZoomPageTransitionsBuilder(),
+    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+    TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+    TargetPlatform.macOS: ZoomPageTransitionsBuilder(),
+    TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+    TargetPlatform.fuchsia: ZoomPageTransitionsBuilder(),
+  },
+),
+```
+
+`ZoomPageTransitionsBuilder` starts from a fully opaque/visible state so there is no white flash on any platform including web.
+
+**Additionally**, in `lib/screens/splash/splash_screen.dart` and `lib/screens/onboarding/onboarding_screen.dart`, all `PageRouteBuilder` navigation calls use a `FadeTransition`. Make sure the `FadeTransition` starts from opacity `0.0` to `1.0` but the **background of the child is always `AppColors.background` (dark)**, never transparent white. Wrap the child in each `transitionsBuilder` with a `ColoredBox`:
+
+```dart
+transitionsBuilder: (context, animation, secondaryAnimation, child) {
+  return FadeTransition(
+    opacity: animation,
+    child: ColoredBox(
+      color: AppColors.background,
+      child: child,
+    ),
+  );
+},
+```
+
+Apply this same `ColoredBox` wrapper in:
+- `SplashScreen._navigateToHome()` 
+- `SplashScreen._navigateToNext()` (onboarding route)
+- `OnboardingScreen` button `onPressed` navigation
+
+This ensures that during the fade transition, the background is always dark — never the default white Material surface.
+
+---
+
+🔴 CRITICAL — White screen after Onboarding (add this FIRST in the prompt)
+Fix the blank white screen that appears after the Onboarding screen navigates to HomeScreen.
+The root cause is in lib/core/theme/app_theme.dart. The pageTransitionsTheme uses FadeUpwardsPageTransitionsBuilder for all platforms, but Flutter Web runs internally as the linux platform — and FadeUpwardsPageTransitionsBuilder starts its animation from a fully transparent/white state, causing a white flash that freezes visually.
+Fix it by replacing the entire pageTransitionsTheme block in AppTheme.darkTheme with this:
+
+pageTransitionsTheme: const PageTransitionsTheme(
+  builders: {
+    TargetPlatform.android: ZoomPageTransitionsBuilder(),
+    TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+    TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+    TargetPlatform.macOS: ZoomPageTransitionsBuilder(),
+    TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+    TargetPlatform.fuchsia: ZoomPageTransitionsBuilder(),
+  },
+),
+
+ZoomPageTransitionsBuilder starts from a fully opaque/visible state so there is no white flash on any platform including web.
+Additionally, in lib/screens/splash/splash_screen.dart and lib/screens/onboarding/onboarding_screen.dart, all PageRouteBuilder navigation calls use a FadeTransition. Make sure the FadeTransition starts from opacity 0.0 to 1.0 but the background of the child is always AppColors.background (dark), never transparent white. Wrap the child in each transitionsBuilder with a ColoredBox:
+
+transitionsBuilder: (context, animation, secondaryAnimation, child) {
+  return FadeTransition(
+    opacity: animation,
+    child: ColoredBox(
+      color: AppColors.background,
+      child: child,
+    ),
+  );
+},
+
+Apply this same ColoredBox wrapper in:
+SplashScreen._navigateToHome()
+SplashScreen._navigateToNext() (onboarding route)
+OnboardingScreen button onPressed navigation
+This ensures that during the fade transition, the background is always dark — never the default white Material surface.

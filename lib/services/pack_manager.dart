@@ -73,14 +73,6 @@ class PackManager extends ChangeNotifier {
     return deck;
   }
 
-  List<GameCardPrompt> getTruthsFromDeck() {
-    return getMergedDeck().where((p) => p.type == 'truth').toList();
-  }
-
-  List<GameCardPrompt> getDaresFromDeck() {
-    return getMergedDeck().where((p) => p.type == 'dare').toList();
-  }
-
   // ── Custom Pack Management ──
 
   void addCustomPack(String title) {

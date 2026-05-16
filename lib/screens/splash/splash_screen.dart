@@ -58,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen>
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,
-            child: child,
+            child: ColoredBox(color: AppColors.background, child: child),
           );
         },
         transitionDuration: const Duration(milliseconds: 500),
@@ -74,7 +74,7 @@ class _SplashScreenState extends State<SplashScreen>
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,
-            child: child,
+            child: ColoredBox(color: AppColors.background, child: child),
           );
         },
         transitionDuration: const Duration(milliseconds: 500),

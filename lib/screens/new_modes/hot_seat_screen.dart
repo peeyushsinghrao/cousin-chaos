@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/leave_game_dialog.dart';
 import '../../data/hot_seat_dares.dart';
 import '../../services/haptic_service.dart';
+import '../../services/player_manager.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
 
@@ -32,6 +33,22 @@ class _HotSeatScreenState extends State<HotSeatScreen> {
 
   final Map<String, int> _scores = {};
   String _currentDare = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final pm = context.read<PlayerManager>();
+      if (pm.players.isNotEmpty) {
+        setState(() {
+          _players.clear();
+          _players.addAll(pm.players.map((p) => p.name));
+          _nextId = _players.length + 1;
+        });
+      }
+    });
+  }
 
   bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
   bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;

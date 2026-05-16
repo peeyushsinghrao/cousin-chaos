@@ -27,6 +27,7 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
   bool _isRunning = false;
   int _timeLeft = 0;
   Timer? _timer;
+  final Set<int> _recentIndices = {};
 
   final List<SpeedChallenge> _challenges = [
     SpeedChallenge('Name 5 anime', 7),
@@ -52,7 +53,13 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
 
   void _nextChallenge() {
     _timer?.cancel();
-    _currentChallenge = _challenges[_random.nextInt(_challenges.length)];
+    int idx;
+    do {
+      idx = _random.nextInt(_challenges.length);
+    } while (_recentIndices.contains(idx) && _recentIndices.length < _challenges.length);
+    _recentIndices.add(idx);
+    if (_recentIndices.length >= _challenges.length) _recentIndices.clear();
+    _currentChallenge = _challenges[idx];
     _timeLeft = _currentChallenge.seconds;
     _isRunning = false;
     setState(() {});

@@ -22,6 +22,7 @@ class _BombPassScreenState extends State<BombPassScreen> {
   bool _isPlaying = false;
   bool _isExploded = false;
   String _currentTask = '';
+  final Set<int> _recentIndices = {};
 
   Timer? _bombTimer;
   Timer? _tickTimer;
@@ -87,8 +88,14 @@ class _BombPassScreenState extends State<BombPassScreen> {
     HapticFeedback.lightImpact();
     final soundEnabled = context.read<PreferencesService>().soundEnabled;
     SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: soundEnabled);
+    int idx;
+    do {
+      idx = _random.nextInt(_tasks.length);
+    } while (_recentIndices.contains(idx) && _recentIndices.length < _tasks.length);
+    _recentIndices.add(idx);
+    if (_recentIndices.length >= _tasks.length) _recentIndices.clear();
     setState(() {
-      _currentTask = _tasks[_random.nextInt(_tasks.length)];
+      _currentTask = _tasks[idx];
     });
   }
 
@@ -295,9 +302,6 @@ class _BombPassScreenState extends State<BombPassScreen> {
   }
 
   Widget _buildExplosionScreen() {
-    final soundEnabled = context.read<PreferencesService>().soundEnabled;
-    SoundService.instance.play(SoundEvent.wrong, soundEnabled: soundEnabled);
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -336,11 +340,7 @@ class _BombPassScreenState extends State<BombPassScreen> {
               ),
               const SizedBox(height: 64),
               GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isExploded = false;
-                  });
-                },
+                onTap: _startGame,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
                   decoration: BoxDecoration(

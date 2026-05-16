@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import 'dart:async';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/leave_game_dialog.dart';
 
 class FreezeModeScreen extends StatefulWidget {
   const FreezeModeScreen({super.key});
@@ -37,7 +38,6 @@ class _FreezeModeScreenState extends State<FreezeModeScreen> {
       _showPenalty = false;
     });
 
-    // Random wait between 5 to 15 seconds before freezing
     final waitTime = _random.nextInt(11) + 5;
     _hiddenTimer = Timer(Duration(seconds: waitTime), _triggerFreeze);
   }
@@ -45,7 +45,6 @@ class _FreezeModeScreenState extends State<FreezeModeScreen> {
   void _triggerFreeze() {
     HapticFeedback.vibrate();
     
-    // Flash effect simulator
     for(int i=0; i<5; i++) {
       Future.delayed(Duration(milliseconds: i * 150), () {
         if(mounted) HapticFeedback.heavyImpact();
@@ -54,7 +53,7 @@ class _FreezeModeScreenState extends State<FreezeModeScreen> {
 
     setState(() {
       _isFrozen = true;
-      _freezeTimeLeft = _random.nextInt(21) + 10; // 10 to 30 seconds
+      _freezeTimeLeft = _random.nextInt(21) + 10;
     });
 
     _freezeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -70,6 +69,7 @@ class _FreezeModeScreenState extends State<FreezeModeScreen> {
   void _showPenaltyPopup() {
     setState(() {
       _isFrozen = false;
+      _isPlaying = false;
       _showPenalty = true;
     });
   }
@@ -83,116 +83,124 @@ class _FreezeModeScreenState extends State<FreezeModeScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'FREEZE MODE',
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: AppColors.truthBlue,
-            letterSpacing: 2,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final should = await showLeaveGameDialog(context);
+        if (should == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            colors: [AppColors.truthBlue.withAlpha(40), AppColors.background],
-            radius: 1.2,
-            center: Alignment.topCenter,
+          title: Text(
+            'FREEZE MODE',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.truthBlue,
+              letterSpacing: 2,
+            ),
           ),
+          centerTitle: true,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_showPenalty) _buildPenaltyPopup(),
-            if (!_isPlaying && !_showPenalty) ...[
-              const Icon(Icons.ac_unit_rounded, color: AppColors.truthBlue, size: 100),
-              const SizedBox(height: 32),
-              Text(
-                'Place phone where everyone can see.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+        body: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              colors: [AppColors.truthBlue.withAlpha(40), AppColors.background],
+              radius: 1.2,
+              center: Alignment.topCenter,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_showPenalty) _buildPenaltyPopup(),
+              if (!_isPlaying && !_showPenalty) ...[
+                const Icon(Icons.ac_unit_rounded, color: AppColors.truthBlue, size: 100),
+                const SizedBox(height: 32),
+                Text(
+                  'Place phone where everyone can see.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'When the screen flashes FREEZE,\neveryone must freeze physically.\nIf you move, you lose!',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
+                const SizedBox(height: 12),
+                Text(
+                  'When the screen flashes FREEZE,\neveryone must freeze physically.\nIf you move, you lose!',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 48),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    _startGame();
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: AppColors.truthBlue,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.truthBlue.withAlpha(60),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        'START',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 2,
+                const SizedBox(height: 48),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _startGame();
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: AppColors.truthBlue,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.truthBlue.withAlpha(60),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          'START',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 2,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-            if (_isPlaying && !_isFrozen)
-              Pulse(
-                infinite: true,
-                child: Column(
-                  children: [
-                    const Icon(Icons.music_note_rounded, color: AppColors.truthBlue, size: 80),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Act normal... for now.',
-                      style: GoogleFonts.poppins(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+              ],
+              if (_isPlaying && !_isFrozen)
+                Pulse(
+                  infinite: true,
+                  child: Column(
+                    children: [
+                      const Icon(Icons.music_note_rounded, color: AppColors.truthBlue, size: 80),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Act normal... for now.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -275,9 +283,7 @@ class _FreezeModeScreenState extends State<FreezeModeScreen> {
             ),
             const SizedBox(height: 32),
             GestureDetector(
-              onTap: () {
-                setState(() => _showPenalty = false);
-              },
+              onTap: _startGame,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 decoration: BoxDecoration(

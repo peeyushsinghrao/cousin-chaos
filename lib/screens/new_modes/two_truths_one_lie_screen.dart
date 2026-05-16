@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/leave_game_dialog.dart';
 import '../../services/haptic_service.dart';
+import '../../services/player_manager.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
 
@@ -33,6 +34,22 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
   List<String> _submittedStatements = [];
   int _submittedLieIndex = 0;
   int? _guessedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final pm = context.read<PlayerManager>();
+      if (pm.players.isNotEmpty) {
+        setState(() {
+          _players.clear();
+          _players.addAll(pm.players.map((p) => p.name));
+          _nextId = _players.length + 1;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -64,8 +81,9 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fill in all 3 statements!')));
       return;
     }
-    _submittedStatements = stmts..shuffle();
-    _submittedLieIndex = _submittedStatements.indexOf(stmts[_lieIndex]);
+    final lieText = stmts[_lieIndex];
+    _submittedStatements = List<String>.from(stmts)..shuffle();
+    _submittedLieIndex = _submittedStatements.indexOf(lieText);
     if (_submittedLieIndex == -1) _submittedLieIndex = 0;
     SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
     setState(() => _phase = _TTLPhase.vote);
