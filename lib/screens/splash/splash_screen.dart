@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../widgets/neon_button.dart';
-import '../onboarding/onboarding_screen.dart';
 import '../home/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -39,34 +37,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  Future<void> _navigateToNext() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
-
-    if (hasSeenOnboarding) {
-      _navigateToHome();
-      return;
-    }
-
-    await prefs.setBool('seen_onboarding', true);
-    if (!mounted) return;
-
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const OnboardingScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: ColoredBox(color: AppColors.background, child: child),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 500),
-      ),
-    );
-  }
-
-  void _navigateToHome() {
+  void _navigateToNext() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
