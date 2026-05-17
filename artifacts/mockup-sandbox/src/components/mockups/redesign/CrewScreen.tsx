@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "wouter";
 import { Trophy, Plus, Settings, Gamepad2, ShieldAlert, Zap, Crown } from "lucide-react";
 
 export function CrewScreen() {
