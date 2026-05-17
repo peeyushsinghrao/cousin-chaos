@@ -679,14 +679,6 @@ class _ActItOutScreenState extends State<ActItOutScreen> {
     final winner = sorted.first.key;
     final pm = context.read<PlayerManager>();
 
-    for (final entry in _penalties.entries) {
-      try {
-        final player =
-            pm.players.firstWhere((p) => p.name == entry.key);
-        pm.addXp(player.id, entry.key == winner ? 75 : 25);
-      } catch (_) {}
-    }
-
     SessionService.saveSession(SessionRecord(
       id: const Uuid().v4(),
       mode: 'Act It Out',

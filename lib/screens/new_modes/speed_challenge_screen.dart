@@ -12,7 +12,6 @@ import '../../core/widgets/leave_game_dialog.dart';
 import '../../models/player.dart';
 import '../../services/player_manager.dart';
 import '../../services/session_service.dart';
-import '../../widgets/xp_popup.dart';
 
 class SpeedChallenge {
   final String text;
@@ -230,14 +229,7 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
       winner: _winnerId ?? '',
       themeColor: 'red',
     ));
-    if (mounted) {
-      final winner = pm.players.where((p) => p.name == _winnerId).firstOrNull;
-      if (winner != null) pm.addXp(winner.id, 75);
-      for (final p in _eliminatedPlayers) {
-        pm.addXp(p.id, 25);
-      }
-      XpPopup.show(context, 75);
-    }
+    
   }
 
   void _resetLastStanding() {

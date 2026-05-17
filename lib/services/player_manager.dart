@@ -80,14 +80,6 @@ class PlayerManager extends ChangeNotifier {
     }
   }
 
-  void addXp(String playerId, int amount) {
-    final index = _players.indexWhere((p) => p.id == playerId);
-    if (index == -1) return;
-    _players[index].xp += amount;
-    _savePlayers();
-    notifyListeners();
-  }
-
   void resetScores() {
     for (var player in _players) {
       player.score = 0;

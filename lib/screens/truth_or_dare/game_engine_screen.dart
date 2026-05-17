@@ -209,12 +209,6 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
 
   void _onNextPlayer() {
     final playerManager = context.read<PlayerManager>();
-    // Award XP for completing a challenge
-    if (_selectedType != null && playerManager.players.isNotEmpty) {
-      final p = playerManager.players[_currentPlayerIndex % playerManager.players.length];
-      playerManager.addXp(p.id, _selectedType == 'dare' ? 15 : 10);
-    }
-
     // Chaos event check
     final chaosEvent = ChaosEventService.maybeGetEvent(probability: 0.15);
     if (chaosEvent != null && mounted) {

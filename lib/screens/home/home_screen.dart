@@ -25,7 +25,6 @@ import '../../widgets/disclaimer_dialog.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/threed_background.dart';
 import '../players/players_screen.dart';
-import '../leaderboard/leaderboard_screen.dart';
 import '../multiplayer/room_screen.dart';
 
 class _ModeData {
@@ -185,7 +184,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         children: [
                           _buildChaosTab(),
                           const PlayersScreen(),
-                          const LeaderboardScreen(),
                           const SettingsScreen(),
                         ],
                       ),
@@ -771,8 +769,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 _buildNavItem(0, LucideIcons.zap, 'Chaos'),
                 _buildNavItem(1, LucideIcons.users, 'Players'),
                 _buildMultiplayerButton(),
-                _buildNavItem(2, Icons.emoji_events_rounded, 'Ranks'),
-                _buildNavItem(3, LucideIcons.settings, 'Settings'),
+                _buildNavItem(2, LucideIcons.settings, 'Settings'),
               ],
             ),
           ),
