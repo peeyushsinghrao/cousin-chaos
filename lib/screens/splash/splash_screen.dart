@@ -146,23 +146,30 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Widget _buildHeroImage() {
-    return GlassCard(
-      padding: const EdgeInsets.all(40),
-      borderRadius: 40,
-      child: Icon(
-        LucideIcons.gamepad2,
-        size: 80,
-        color: AppColors.primary,
-        shadows: [
-          Shadow(
-            color: AppColors.primary.withAlpha(204),
-            blurRadius: 20,
-          ),
-          Shadow(
-            color: AppColors.primary.withAlpha(102),
+    return Container(
+      width: 160,
+      height: 160,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(40),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withAlpha(120),
             blurRadius: 40,
+            spreadRadius: 4,
+          ),
+          BoxShadow(
+            color: AppColors.secondary.withAlpha(80),
+            blurRadius: 60,
+            spreadRadius: 2,
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(40),
+        child: Image.asset(
+          'assets/images/app_logo.png',
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }
