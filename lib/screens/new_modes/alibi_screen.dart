@@ -28,8 +28,10 @@ class _AlibiScreenState extends State<AlibiScreen> {
   String _scenario = '';
   int _currentPlayerIndex = 0;
   int _currentQuestionIndex = 0;
-  Map<String, bool> _votes = {};
+  // Phase 2 fix: votes map is voter → accused player name (not bool)
+  Map<String, String> _votes = {};
   List<String> _questions = [];
+  bool _sessionSaved = false;
 
   late ConfettiController _confettiController;
   final _rng = Random();
@@ -108,6 +110,12 @@ class _AlibiScreenState extends State<AlibiScreen> {
         ConfettiController(duration: const Duration(seconds: 4));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final pm = context.read<PlayerManager>();
+      // Phase 1 fix: auto-populate selected players from PlayerManager
+      if (pm.players.length >= 2) {
+        setState(() {
+          _selectedPlayers = pm.players.map((p) => p.name).toList();
+        });
+      }
       if (pm.players.length < 2) {
         showDialog(
           context: context,
@@ -279,9 +287,9 @@ class _AlibiScreenState extends State<AlibiScreen> {
               'Build your cover story together',
               style: TextStyle(color: Colors.white54),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Text(
-              'SELECT PLAYERS (3–8)',
+              'PLAYERS',
               style: TextStyle(
                 color: Colors.white38,
                 fontSize: 11,
@@ -290,69 +298,27 @@ class _AlibiScreenState extends State<AlibiScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            ...pm.players.map((p) {
-              final selected = _selectedPlayers.contains(p.name);
-              return GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() {
-                    if (selected) {
-                      if (_selectedPlayers.length > 3) {
-                        _selectedPlayers.remove(p.name);
-                      }
-                    } else if (_selectedPlayers.length < 8) {
-                      _selectedPlayers.add(p.name);
-                    }
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.primary.withAlpha(40)
-                        : AppColors.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: selected
-                          ? AppColors.primary
-                          : Colors.white12,
-                      width: selected ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor:
-                            AppColors.primary.withAlpha(60),
-                        child: Text(
-                          p.name[0].toUpperCase(),
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          p.name,
-                          style: GoogleFonts.sora(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      if (selected)
-                        Icon(LucideIcons.check,
-                            color: AppColors.primary, size: 18),
-                    ],
-                  ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: pm.players.map((p) => Chip(
+                label: Text(p.name,
+                    style: GoogleFonts.sora(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600)),
+                backgroundColor: AppColors.primary.withAlpha(30),
+                side: const BorderSide(color: AppColors.primary, width: 1),
+                avatar: CircleAvatar(
+                  backgroundColor: AppColors.primary.withAlpha(80),
+                  child: Text(p.name[0].toUpperCase(),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold)),
                 ),
-              );
-            }),
+              )).toList(),
+            ),
             const SizedBox(height: 20),
             Text(
               'CATEGORY (2–3)',
@@ -374,7 +340,7 @@ class _AlibiScreenState extends State<AlibiScreen> {
             ),
             const Spacer(),
             GestureDetector(
-              onTap: (_selectedPlayers.length >= 3 &&
+              onTap: (_selectedPlayers.length >= 2 &&
                       _selectedCategories.isNotEmpty)
                   ? () {
                       _scenario = _generateScenario(_selectedCategories);
@@ -386,11 +352,11 @@ class _AlibiScreenState extends State<AlibiScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  gradient: (_selectedPlayers.length >= 3 &&
+                  gradient: (_selectedPlayers.length >= 2 &&
                           _selectedCategories.isNotEmpty)
                       ? AppColors.primaryGradient
                       : null,
-                  color: (_selectedPlayers.length >= 3 &&
+                  color: (_selectedPlayers.length >= 2 &&
                           _selectedCategories.isNotEmpty)
                       ? null
                       : AppColors.surfaceLight,
@@ -400,7 +366,7 @@ class _AlibiScreenState extends State<AlibiScreen> {
                   'Begin Alibi',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.sora(
-                    color: (_selectedPlayers.length >= 3 &&
+                    color: (_selectedPlayers.length >= 2 &&
                             _selectedCategories.isNotEmpty)
                         ? Colors.white
                         : Colors.white38,
@@ -732,90 +698,57 @@ class _AlibiScreenState extends State<AlibiScreen> {
                     fontSize: 16,
                   ),
                 ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          setState(() {
-                            _votes[currentVoter] = true;
-                            if (_votes.length ==
-                                _selectedPlayers.length) {
-                              _confettiController.play();
-                              _step = 6;
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 16),
-                          decoration: BoxDecoration(
-                            color:
-                                Colors.green.withAlpha(40),
-                            borderRadius:
-                                BorderRadius.circular(14),
-                            border: Border.all(
-                                color: Colors.green
-                                    .withAlpha(100)),
-                          ),
-                          child: const Column(
-                            children: [
-                              Text('🤝', style: TextStyle(fontSize: 28)),
-                              SizedBox(height: 4),
-                              Text(
-                                'Alibi Holds',
-                                style: TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
+                const SizedBox(height: 16),
+                // Phase 2 fix: vote FOR a player (accuse), not hold/break
+                ...(_selectedPlayers
+                    .where((p) => p != currentVoter)
+                    .map((accused) => GestureDetector(
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        setState(() {
+                          _votes[currentVoter] = accused;
+                          if (_votes.length == _selectedPlayers.length) {
+                            _confettiController.play();
+                            _step = 6;
+                          }
+                        });
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 14, horizontal: 18),
+                        decoration: BoxDecoration(
+                          color: AppColors.tertiary.withAlpha(20),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: AppColors.tertiary.withAlpha(80)),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: AppColors.tertiary.withAlpha(60),
+                              child: Text(accused[0].toUpperCase(),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12)),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(accused,
+                                style: GoogleFonts.sora(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                )),
+                            const Spacer(),
+                            const Icon(Icons.gavel_rounded,
+                                color: AppColors.tertiary, size: 18),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          setState(() {
-                            _votes[currentVoter] = false;
-                            if (_votes.length ==
-                                _selectedPlayers.length) {
-                              _step = 6;
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withAlpha(40),
-                            borderRadius:
-                                BorderRadius.circular(14),
-                            border: Border.all(
-                                color:
-                                    Colors.red.withAlpha(100)),
-                          ),
-                          child: const Column(
-                            children: [
-                              Text('💥', style: TextStyle(fontSize: 28)),
-                              SizedBox(height: 4),
-                              Text(
-                                'Story Breaks',
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                    ))),
               ],
             ),
           ),
@@ -825,123 +758,152 @@ class _AlibiScreenState extends State<AlibiScreen> {
   }
 
   Widget _buildResults() {
-    final holdsCount = _votes.values.where((v) => v).length;
-    final breaksCount = _votes.values.where((v) => !v).length;
-    final alibiHolds = holdsCount >= breaksCount;
+    // Phase 2 fix: tally accusation votes per player
+    final Map<String, int> voteCounts = {};
+    for (final accused in _votes.values) {
+      voteCounts[accused] = (voteCounts[accused] ?? 0) + 1;
+    }
+    final sorted = _selectedPlayers.toList()
+      ..sort((a, b) =>
+          (voteCounts[b] ?? 0).compareTo(voteCounts[a] ?? 0));
+    final mostAccused = sorted.isNotEmpty ? sorted.first : '';
+    final topVotes = voteCounts[mostAccused] ?? 0;
+    final totalVotes = _votes.length;
 
-    SessionService.saveSession(SessionRecord(
-      id: const Uuid().v4(),
-      mode: 'Alibi',
-      playedAt: DateTime.now(),
-      players: _selectedPlayers,
-      winner: alibiHolds ? 'The Group' : 'Nobody',
-      themeColor: 'green',
-    ));
+    // Phase 2 fix: guard duplicate session saves
+    if (!_sessionSaved) {
+      _sessionSaved = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SessionService.saveSession(SessionRecord(
+          id: const Uuid().v4(),
+          mode: 'Alibi',
+          playedAt: DateTime.now(),
+          players: _selectedPlayers,
+          winner: mostAccused.isNotEmpty ? mostAccused : 'Nobody',
+          themeColor: 'green',
+        ));
+      });
+    }
 
-    return Stack(
-      children: [
-        if (!alibiHolds)
-          Container(color: Colors.red.withAlpha(20)),
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                alibiHolds ? '🤝 ALIBI HOLDS!' : '💥 STORY BREAKS!',
-                style: GoogleFonts.sora(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: alibiHolds ? Colors.green : Colors.red,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                alibiHolds
-                    ? '$holdsCount votes held the alibi'
-                    : '$breaksCount votes broke the story',
-                style: TextStyle(color: Colors.white54),
-              ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: ListView(
-                  children: _votes.entries.map((e) {
-                    return ListTile(
-                      leading: CircleAvatar(
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            mostAccused.isNotEmpty ? '🎯 VERDICT' : '🤔 NO VERDICT',
+            style: GoogleFonts.sora(
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+              color: AppColors.tertiary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          if (mostAccused.isNotEmpty)
+            Text(
+              '$mostAccused got the most accusations ($topVotes/$totalVotes)',
+              style: const TextStyle(color: Colors.white54),
+              textAlign: TextAlign.center,
+            ),
+          const SizedBox(height: 32),
+          // Phase 3 fix: show vote % per player
+          Expanded(
+            child: ListView(
+              children: sorted.map((player) {
+                final count = voteCounts[player] ?? 0;
+                final pct = totalVotes > 0
+                    ? (count / totalVotes * 100).round()
+                    : 0;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: player == mostAccused
+                        ? AppColors.tertiary.withAlpha(25)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: player == mostAccused
+                          ? AppColors.tertiary.withAlpha(100)
+                          : Colors.white12,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
                         radius: 18,
                         backgroundColor: AppColors.primary.withAlpha(60),
-                        child: Text(e.key[0].toUpperCase(),
+                        child: Text(player[0].toUpperCase(),
                             style: const TextStyle(color: Colors.white)),
                       ),
-                      title: Text(
-                        e.key,
-                        style:
-                            const TextStyle(color: Colors.white),
-                      ),
-                      trailing: Text(
-                        e.value ? '🤝 Holds' : '💥 Breaks',
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: Text(player,
+                              style: const TextStyle(color: Colors.white))),
+                      Text(
+                        '$count vote${count == 1 ? '' : 's'} ($pct%)',
                         style: TextStyle(
-                          color: e.value ? Colors.green : Colors.red,
+                          color: player == mostAccused
+                              ? AppColors.tertiary
+                              : Colors.white54,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    );
-                  }).toList(),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white30),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    final pm = context.read<PlayerManager>();
+                    setState(() {
+                      _step = 1;
+                      _votes = {};
+                      _currentPlayerIndex = 0;
+                      _currentQuestionIndex = 0;
+                      _sessionSaved = false;
+                      _selectedPlayers =
+                          pm.players.map((p) => p.name).toList();
+                      _selectedCategories = [];
+                    });
+                  },
+                  child: Text('Play Again',
+                      style: GoogleFonts.sora(color: Colors.white)),
                 ),
               ),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side:
-                            const BorderSide(color: Colors.white30),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(12)),
-                      ),
-                      onPressed: () => setState(() {
-                        _step = 1;
-                        _votes = {};
-                        _currentPlayerIndex = 0;
-                        _currentQuestionIndex = 0;
-                        _selectedPlayers = [];
-                        _selectedCategories = [];
-                      }),
-                      child: Text('Play Again',
-                          style: GoogleFonts.sora(
-                              color: Colors.white)),
-                    ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(12)),
-                      ),
-                      onPressed: () => Navigator.popUntil(
-                          context, (r) => r.isFirst),
-                      child: Text('Home',
-                          style: GoogleFonts.sora(
-                              color: Colors.white,
-                              fontWeight:
-                                  FontWeight.bold)),
-                    ),
-                  ),
-                ],
+                  onPressed: () =>
+                      Navigator.popUntil(context, (r) => r.isFirst),
+                  child: Text('Home',
+                      style: GoogleFonts.sora(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
+                ),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

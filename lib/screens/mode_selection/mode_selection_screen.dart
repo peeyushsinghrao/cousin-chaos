@@ -4,7 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/animations.dart';
 import '../../core/widgets/glass_card.dart';
 import '../truth_or_dare/pack_selection_screen.dart';
-import '../new_modes/impostor_players_screen.dart';
+import '../new_modes/impostor_settings_screen.dart';
 import '../../core/navigation/page_transitions.dart';
 import '../new_modes/speed_challenge_screen.dart';
 import '../../widgets/disclaimer_dialog.dart';
@@ -307,7 +307,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
           buttonText: 'Enter The Void',
           buttonGradient: AppColors.tertiaryGradient,
           onTap: () {
-            Navigator.push(context, slideUpRoute(const ImpostorPlayersScreen()));
+            Navigator.push(context, slideUpRoute(const ImpostorSettingsScreen()));
           },
         ),
         

@@ -113,7 +113,8 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
     if (widget.timeLimitEnabled && widget.timeLimitSeconds != null) {
       _timeLeft = widget.timeLimitSeconds!;
     } else {
-      _timeLeft = 180;
+      // Phase 2 fix: use -1 sentinel when timer is disabled so it never ticks
+      _timeLeft = -1;
     }
   }
 
@@ -188,6 +189,8 @@ class _ImpostorGameScreenState extends State<ImpostorGameScreen>
         t.cancel();
         return;
       }
+      // Phase 2 fix: guard against -1 sentinel (timeLimitSeconds was null)
+      if (_timeLeft < 0) { t.cancel(); return; }
       setState(() {
         _timeLeft--;
         if (_timeLeft <= 5 && _timeLeft > 0) {

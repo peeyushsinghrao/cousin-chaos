@@ -45,7 +45,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
   void initState() {
     super.initState();
     _gamePlayers = List.from(context.read<PlayerManager>().players);
-    _drinkCounts = {for (final p in _gamePlayers) p.name: 0};
+    _drinkCounts = {for (final p in _gamePlayers) p.id: 0};
     _glowController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 2000))
       ..repeat(reverse: true);
@@ -137,10 +137,11 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
     }
   }
 
-  void _markHasDone(String playerName) {
+  // Phase 1 fix: score key is player id, not name (names can collide)
+  void _markHasDone(String playerId) {
     HapticService.instance.trigger(HapticEvent.cardReveal, hapticsEnabled: _hapticsEnabled);
     setState(() {
-      _drinkCounts[playerName] = (_drinkCounts[playerName] ?? 0) + 1;
+      _drinkCounts[playerId] = (_drinkCounts[playerId] ?? 0) + 1;
     });
   }
 
@@ -312,7 +313,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
         itemBuilder: (_, i) {
           final p = _gamePlayers[i];
           final isActive = p.name == currentName;
-          final drinks = _drinkCounts[p.name] ?? 0;
+          final drinks = _drinkCounts[p.id] ?? 0;
           return AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -585,9 +586,9 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
                 itemCount: _gamePlayers.length,
                 itemBuilder: (_, i) {
                   final p = _gamePlayers[i];
-                  final drinks = _drinkCounts[p.name] ?? 0;
+                  final drinks = _drinkCounts[p.id] ?? 0;
                   return GestureDetector(
-                    onTap: () => _markHasDone(p.name),
+                    onTap: () => _markHasDone(p.id),
                     child: Container(
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(
@@ -694,7 +695,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
   Widget _buildLeaderboard() {
     final sorted = _gamePlayers.toList()
       ..sort((a, b) =>
-          (_drinkCounts[b.name] ?? 0).compareTo(_drinkCounts[a.name] ?? 0));
+          (_drinkCounts[b.id] ?? 0).compareTo(_drinkCounts[a.id] ?? 0));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -736,7 +737,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
                   itemCount: sorted.length,
                   itemBuilder: (_, i) {
                     final p = sorted[i];
-                    final drinks = _drinkCounts[p.name] ?? 0;
+                    final drinks = _drinkCounts[p.id] ?? 0;
                     final medals = [
                       AppColors.gold,
                       AppColors.textSecondary,

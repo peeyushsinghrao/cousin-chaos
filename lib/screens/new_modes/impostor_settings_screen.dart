@@ -8,7 +8,12 @@ import '../../core/navigation/page_transitions.dart';
 import 'impostor_players_screen.dart';
 
 class ImpostorSettingsScreen extends StatefulWidget {
-  const ImpostorSettingsScreen({super.key});
+  final String? preSelectedCategory;
+
+  const ImpostorSettingsScreen({
+    super.key,
+    this.preSelectedCategory,
+  });
 
   @override
   State<ImpostorSettingsScreen> createState() => _ImpostorSettingsScreenState();
@@ -17,11 +22,17 @@ class ImpostorSettingsScreen extends StatefulWidget {
 class _ImpostorSettingsScreenState extends State<ImpostorSettingsScreen> {
   bool _timeLimitEnabled = false;
   int _timeLimitSeconds = 180;
-  String _selectedCategory = 'GAMING';
+  late String _selectedCategory;
   bool _showCategoryToImpostor = false;
   bool _showHintToImpostor = false;
 
   final List<int> _timeLimitOptions = [60, 90, 120, 180, 240, 300, 420, 600];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = widget.preSelectedCategory ?? 'GAMING';
+  }
 
   String _formatSeconds(int s) {
     final m = s ~/ 60;

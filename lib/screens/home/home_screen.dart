@@ -10,12 +10,13 @@ import '../../services/session_service.dart';
 import '../truth_or_dare/pack_selection_screen.dart';
 import '../settings/settings_screen.dart';
 import '../new_modes/act_it_out_screen.dart';
+import '../new_modes/last_standing_screen.dart';
 import '../new_modes/alibi_screen.dart';
-import '../new_modes/impostor_settings_screen.dart';
-import '../new_modes/speed_challenge_screen.dart';
-import '../new_modes/two_truths_one_lie_screen.dart';
-import '../would_you_rather/wyr_game_screen.dart';
-import '../never_have_i_ever/nhie_game_screen.dart';
+import '../new_modes/impostor_category_screen.dart';
+import '../new_modes/speed_setup_screen.dart';
+import '../new_modes/two_truths_setup_screen.dart';
+import '../would_you_rather/wyr_setup_screen.dart';
+import '../never_have_i_ever/nhie_setup_screen.dart';
 import '../../core/navigation/page_transitions.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
@@ -80,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           icon: Icons.local_fire_department_rounded,
           color: AppColors.primary,
           colorDark: const Color(0xFF3A1C61),
-          builder: (_) => throw '',
+          builder: (_) => const PackSelectionScreen(),
         ),
         _ModeData(
           name: 'Impostor',
@@ -88,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           icon: Icons.person_search_rounded,
           color: AppColors.tertiary,
           colorDark: const Color(0xFF661931),
-          builder: (_) => const ImpostorSettingsScreen(),
+          builder: (_) => const ImpostorCategoryScreen(),
         ),
         _ModeData(
           name: 'Act It Out',
@@ -104,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           icon: Icons.psychology_alt_rounded,
           color: const Color(0xFF93C5FD),
           colorDark: const Color(0xFF1E3A5F),
-          builder: (_) => const TwoTruthsOneLieScreen(),
+          builder: (_) => const TwoTruthsSetupScreen(),
         ),
         _ModeData(
           name: 'Alibi',
@@ -120,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           icon: Icons.speed_rounded,
           color: AppColors.dareRed,
           colorDark: const Color(0xFF4A0B14),
-          builder: (_) => const SpeedChallengeScreen(),
+          builder: (_) => const SpeedSetupScreen(),
         ),
         _ModeData(
           name: 'Would You Rather',
@@ -128,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           icon: Icons.compare_arrows_rounded,
           color: AppColors.neonYellow,
           colorDark: const Color(0xFF3D2F00),
-          builder: (_) => const WouldYouRatherScreen(),
+          builder: (_) => const WyrSetupScreen(),
         ),
         _ModeData(
           name: 'Never Have\nI Ever',
@@ -136,7 +137,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           icon: Icons.ramen_dining_rounded,
           color: AppColors.neonOrange,
           colorDark: const Color(0xFF4A1F0A),
-          builder: (_) => const NeverHaveIEverScreen(),
+          builder: (_) => const NhieSetupScreen(),
+        ),
+        _ModeData(
+          name: 'Last Standing',
+          tagline: 'Who survives?',
+          icon: Icons.military_tech_rounded,
+          color: AppColors.neonCyan,
+          colorDark: const Color(0xFF0A2A2A),
+          builder: (_) => const LastStandingScreen(),
         ),
       ];
 
@@ -330,16 +339,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildWelcome() {
     return Consumer<PlayerManager>(
       builder: (_, pm, __) {
-        final name = pm.players.isNotEmpty
-            ? pm.players.first.name.split(' ').first
-            : null;
         return FadeInUpAnimation(
           duration: const Duration(milliseconds: 500),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                name != null ? 'Hey $name 👋' : 'Welcome back',
+                'Ready for Chaos? ⚡',
                 style: GoogleFonts.sora(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
@@ -717,6 +723,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (mode.name == 'Truth or Dare') {
       DisclaimerDialog.show(context, () {
         Navigator.push(context, slideUpRoute(const PackSelectionScreen()));
+      });
+      return;
+    }
+    if (mode.name == 'Alibi') {
+      DisclaimerDialog.show(context, () {
+        Navigator.push(context, slideUpRoute(mode.builder(context)));
       });
       return;
     }

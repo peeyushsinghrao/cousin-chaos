@@ -1,4 +1,5 @@
 import 'package:cousin_chaos/core/icons.dart';
+import 'dart:async';
 import 'dart:math';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,14 @@ import '../../services/player_manager.dart';
 import '../../services/session_service.dart';
 
 class TwoTruthsOneLieScreen extends StatefulWidget {
-  const TwoTruthsOneLieScreen({super.key});
+  final int writeTimeSec;
+  final int voteTimeSec;
+
+  const TwoTruthsOneLieScreen({
+    super.key,
+    this.writeTimeSec = 90,
+    this.voteTimeSec = 30,
+  });
 
   @override
   State<TwoTruthsOneLieScreen> createState() =>
@@ -35,12 +43,28 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
   List<String> _otherPlayers = [];
   Map<String, int> _scores = {};
 
+  // Phase 1 fix: class-level _selectedIndex so parent rebuilds don't reset it
+  int? _selectedIndex;
+
+  // Phase 2 fix: session save guard
+  bool _sessionSaved = false;
+
+  // Phase 3 fix: freeze writer name at start of round
+  String _frozenWriterName = '';
+
+  // Phase 2 fix: phase timers
+  Timer? _phaseTimer;
+  late int _writeTimeLeft;
+  late int _voteTimeLeft;
+
   late ConfettiController _confettiController;
   final _rng = Random();
 
   @override
   void initState() {
     super.initState();
+    _writeTimeLeft = widget.writeTimeSec;
+    _voteTimeLeft = widget.voteTimeSec;
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 4));
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -68,11 +92,54 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
 
   @override
   void dispose() {
+    _phaseTimer?.cancel();
     _truth1Controller.dispose();
     _truth2Controller.dispose();
     _lieController.dispose();
     _confettiController.dispose();
     super.dispose();
+  }
+
+  void _startWritePhaseTimer() {
+    _phaseTimer?.cancel();
+    _writeTimeLeft = widget.writeTimeSec;
+    _phaseTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_writeTimeLeft > 0) {
+        setState(() => _writeTimeLeft--);
+      } else {
+        _phaseTimer?.cancel();
+        _submitStatements();
+      }
+    });
+  }
+
+  void _startVotePhaseTimer() {
+    _phaseTimer?.cancel();
+    _voteTimeLeft = widget.voteTimeSec;
+    _phaseTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_voteTimeLeft > 0) {
+        setState(() => _voteTimeLeft--);
+      } else {
+        _phaseTimer?.cancel();
+        _autoAdvanceVoter();
+      }
+    });
+  }
+
+  void _autoAdvanceVoter() {
+    if (_selectedIndex != null) {
+      _votes[_currentVoter] = _selectedIndex!;
+    }
+    _currentVoterIndex++;
+    if (_currentVoterIndex < _otherPlayers.length) {
+      _currentVoter = _otherPlayers[_currentVoterIndex];
+      setState(() => _selectedIndex = null);
+      _startVotePhaseTimer();
+    } else {
+      setState(() => _phase = 3);
+    }
   }
 
   String get _currentPlayerName {
@@ -87,6 +154,10 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
       _lieController.text.trim().isNotEmpty;
 
   void _submitStatements() {
+    _phaseTimer?.cancel();
+    // Phase 3 fix: freeze writer name at the start of the round
+    _frozenWriterName = _currentPlayerName;
+
     final statements = [
       {'text': _truth1Controller.text.trim(), 'isLie': false},
       {'text': _truth2Controller.text.trim(), 'isLie': false},
@@ -97,11 +168,12 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
       _shuffledStatements = List.from(statements);
       _votes = {};
       _currentVoterIndex = 0;
+      _selectedIndex = null;
     });
 
     final pm = context.read<PlayerManager>();
     _otherPlayers = pm.players
-        .where((p) => p.name != _currentPlayerName)
+        .where((p) => p.name != _frozenWriterName)
         .map((p) => p.name)
         .toList();
 
@@ -109,6 +181,7 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
       _currentVoter = _otherPlayers[0];
     }
     setState(() => _phase = 2);
+    _startVotePhaseTimer();
   }
 
   @override
@@ -165,6 +238,10 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
   }
 
   Widget _buildWritingPhase() {
+    // Start write timer the first time this phase is rendered for each player
+    if (_writeTimeLeft == widget.writeTimeSec && _phaseTimer == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _startWritePhaseTimer());
+    }
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -174,11 +251,14 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
               IconButton(
                 icon: Icon(LucideIcons.arrowLeft, color: Colors.white),
                 onPressed: () {
+                  _phaseTimer?.cancel();
                   if (_currentPlayerIndex == 0) {
                     Navigator.pop(context);
                   } else {
                     setState(() {
                       _currentPlayerIndex--;
+                      _writeTimeLeft = widget.writeTimeSec;
+                      _phaseTimer = null;
                       _truth1Controller.clear();
                       _truth2Controller.clear();
                       _lieController.clear();
@@ -205,7 +285,9 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
             'Write your 2 truths and 1 lie',
             style: TextStyle(color: Colors.white54),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 10),
+          _buildCountdownBar(_writeTimeLeft, widget.writeTimeSec, AppColors.primary),
+          const SizedBox(height: 16),
           Expanded(
             child: ListView(
               children: [
@@ -275,6 +357,36 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
     );
   }
 
+  Widget _buildCountdownBar(int current, int total, Color color) {
+    final pct = total == 0 ? 0.0 : (current / total).clamp(0.0, 1.0);
+    final isLow = current <= (total * 0.2).ceil();
+    final barColor = isLow ? Colors.redAccent : color;
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct,
+              backgroundColor: Colors.white12,
+              valueColor: AlwaysStoppedAnimation(barColor),
+              minHeight: 4,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '${current}s',
+          style: TextStyle(
+            color: isLow ? Colors.redAccent : Colors.white54,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatementField({
     required TextEditingController controller,
     required String label,
@@ -329,13 +441,13 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
       return const SizedBox.shrink();
     }
 
-    int? _selectedIndex;
-
     return StatefulBuilder(
       builder: (context, innerSet) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            _buildCountdownBar(_voteTimeLeft, widget.voteTimeSec, AppColors.secondary),
+            const SizedBox(height: 10),
             Text(
               'Pass to $_currentVoter',
               style: GoogleFonts.sora(
@@ -372,7 +484,7 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
               final stmt = e.value;
               final isSelected = _selectedIndex == index;
               return GestureDetector(
-                onTap: () => innerSet(() => _selectedIndex = index),
+                onTap: () => setState(() => _selectedIndex = index),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   margin: const EdgeInsets.only(bottom: 12),
@@ -433,13 +545,14 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
               onTap: _selectedIndex != null
                   ? () {
                       HapticFeedback.mediumImpact();
+                      _phaseTimer?.cancel();
                       _votes[_currentVoter] = _selectedIndex!;
                       _currentVoterIndex++;
                       if (_currentVoterIndex < _otherPlayers.length) {
                         _currentVoter =
                             _otherPlayers[_currentVoterIndex];
-                        innerSet(() => _selectedIndex = null);
-                        setState(() {});
+                        setState(() => _selectedIndex = null);
+                        _startVotePhaseTimer();
                       } else {
                         setState(() => _phase = 3);
                       }
@@ -485,7 +598,9 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
       if (vote == lieIndex) correctGuesses++;
     }
 
-    final writerPoints = _votes.length - correctGuesses;
+    // Phase 1 fix: writer gets 3pts ONLY if nobody guessed the lie, else 0
+    final bool nobodyGuessed = correctGuesses == 0;
+    final writerPoints = nobodyGuessed ? 3 : 0;
     final voterPoints = correctGuesses;
 
     return Padding(
@@ -580,7 +695,7 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
           }),
           const Spacer(),
           _ScoreBadge(
-            writerName: _currentPlayerName,
+            writerName: _frozenWriterName,
             writerPoints: writerPoints,
             voterPoints: voterPoints,
           ),
@@ -588,14 +703,29 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
           GestureDetector(
             onTap: () {
               final pm = context.read<PlayerManager>();
-              _scores[_currentPlayerName] =
-                  (_scores[_currentPlayerName] ?? 0) + writerPoints;
+              // Phase 1 fix: writer gets 3pts ONLY if nobody guessed correctly
+              if (nobodyGuessed) {
+                _scores[_frozenWriterName] =
+                    (_scores[_frozenWriterName] ?? 0) + 3;
+              }
+              // Phase 1 fix: voters who guessed correctly each get 1pt
+              for (final entry in _votes.entries) {
+                final votedIndex = entry.value;
+                final wasCorrect =
+                    _shuffledStatements[votedIndex]['isLie'] == true;
+                if (wasCorrect) {
+                  _scores[entry.key] = (_scores[entry.key] ?? 0) + 1;
+                }
+              }
 
               _currentPlayerIndex++;
               if (_currentPlayerIndex >= pm.players.length) {
                 _confettiController.play();
                 setState(() => _phase = 4);
               } else {
+                _phaseTimer?.cancel();
+                _writeTimeLeft = widget.writeTimeSec;
+                _phaseTimer = null;
                 _truth1Controller.clear();
                 _truth2Controller.clear();
                 _lieController.clear();
@@ -633,14 +763,20 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
     final winner = sorted.isNotEmpty ? sorted.first.key : '';
     final pm = context.read<PlayerManager>();
 
-    SessionService.saveSession(SessionRecord(
-      id: const Uuid().v4(),
-      mode: 'Two Truths, One Lie',
-      playedAt: DateTime.now(),
-      players: pm.players.map((p) => p.name).toList(),
-      winner: winner,
-      themeColor: 'blue',
-    ));
+    // Phase 2 fix: guard against saving duplicate sessions on every rebuild
+    if (!_sessionSaved) {
+      _sessionSaved = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SessionService.saveSession(SessionRecord(
+          id: const Uuid().v4(),
+          mode: 'Two Truths, One Lie',
+          playedAt: DateTime.now(),
+          players: pm.players.map((p) => p.name).toList(),
+          winner: winner,
+          themeColor: 'blue',
+        ));
+      });
+    }
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -725,14 +861,21 @@ class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () => setState(() {
-                    _phase = 1;
-                    _currentPlayerIndex = 0;
-                    _scores = {};
-                    _truth1Controller.clear();
-                    _truth2Controller.clear();
-                    _lieController.clear();
-                  }),
+                  onPressed: () {
+                    _phaseTimer?.cancel();
+                    setState(() {
+                      _phase = 1;
+                      _currentPlayerIndex = 0;
+                      _scores = {};
+                      _sessionSaved = false;
+                      _writeTimeLeft = widget.writeTimeSec;
+                      _phaseTimer = null;
+                      _selectedIndex = null;
+                      _truth1Controller.clear();
+                      _truth2Controller.clear();
+                      _lieController.clear();
+                    });
+                  },
                   child: Text('Play Again',
                       style: GoogleFonts.sora(color: Colors.white)),
                 ),
