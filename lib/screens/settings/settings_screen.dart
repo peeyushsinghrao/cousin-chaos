@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/preferences_service.dart';
+import '../../core/widgets/glass_card.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -10,161 +11,319 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Settings',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Consumer<PreferencesService>(
-        builder: (context, prefs, child) {
-          return ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              _buildSectionHeader('GAMEPLAY'),
-              _buildSwitchTile(
-                title: 'Sound Effects',
-                icon: Icons.volume_up_rounded,
-                value: prefs.soundEnabled,
-                onChanged: (_) => prefs.toggleSound(),
-                color: AppColors.neonCyan,
-              ),
-              const SizedBox(height: 12),
-              _buildSwitchTile(
-                title: 'Haptic Feedback',
-                icon: Icons.vibration_rounded,
-                value: prefs.hapticsEnabled,
-                onChanged: (_) => prefs.toggleHaptics(),
-                color: AppColors.neonPink,
-              ),
-              const SizedBox(height: 32),
-              _buildSectionHeader('DATA'),
-              _buildActionTile(
-                title: 'Clear All Data',
-                subtitle: 'Removes all custom packs and saved players.',
-                icon: Icons.delete_outline_rounded,
-                color: AppColors.dareRed,
-                onTap: () => _showClearDataDialog(context, prefs),
-              ),
-              const SizedBox(height: 32),
-              _buildSectionHeader('ABOUT'),
-              _buildInfoTile(
-                title: 'Version',
-                value: '1.0.0 Ultimate Edition',
-                icon: Icons.info_outline_rounded,
-              ),
-              const SizedBox(height: 12),
-              _buildInfoTile(
-                title: 'Credits',
-                value: 'Built with ♥️ by Antigravity',
-                icon: Icons.code_rounded,
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16, left: 4),
-      child: Text(
-        title,
-        style: GoogleFonts.poppins(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textMuted,
-          letterSpacing: 2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSwitchTile({
-    required String title,
-    required IconData icon,
-    required bool value,
-    required Function(bool) onChanged,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceBright.withAlpha(50)),
-      ),
-      child: Row(
+      backgroundColor: Colors.transparent,
+      body: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withAlpha(20),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+          // Radial gradient at top
+          Positioned(
+            top: -100,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 300,
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 0.8,
+                  colors: [
+                    AppColors.primaryContainer.withAlpha(80),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: AppColors.primaryNeon,
-            inactiveThumbColor: AppColors.textMuted,
-            inactiveTrackColor: AppColors.surfaceBright,
+          Consumer<PreferencesService>(
+            builder: (context, prefs, child) {
+              return ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                children: [
+                  const SizedBox(height: 56),
+                  // Header
+                  Row(
+                    children: [
+                      Text(
+                        'SETTINGS',
+                        style: GoogleFonts.sora(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(13),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withAlpha(26)),
+                        ),
+                        child: Text(
+                          'v1.0.0',
+                          style: GoogleFonts.sora(
+                            fontSize: 10,
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  // PROFILE CARD
+                  GlassCard(
+                    borderRadius: 24,
+                    padding: const EdgeInsets.all(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withAlpha(40),
+                        blurRadius: 30,
+                        spreadRadius: -10,
+                      ),
+                    ],
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [AppColors.secondaryContainer, AppColors.primaryContainer],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'CC',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.background,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Cousin Chaos Player',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Level 14 Instigator',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 14,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Divider(color: Colors.white10),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildStatItem('Games', '6', AppColors.secondaryContainer),
+                            _buildStatItem('Players', '12', AppColors.primary),
+                            _buildStatItem('CP', '1,240', AppColors.gold),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // GAMEPLAY FEEL
+                  _buildSectionLabel('GAMEPLAY FEEL'),
+                  GlassCard(
+                    padding: EdgeInsets.zero,
+                    borderRadius: 24,
+                    child: Column(
+                      children: [
+                        _buildSettingRow(
+                          icon: Icons.volume_up_rounded,
+                          iconColor: AppColors.secondaryContainer,
+                          title: 'Sound Effects',
+                          subtitle: 'Immersive audio & stings',
+                          trailing: Switch(
+                            value: prefs.soundEnabled,
+                            onChanged: (_) => prefs.toggleSound(),
+                            activeColor: AppColors.secondaryContainer,
+                          ),
+                        ),
+                        const Divider(color: Colors.white10, height: 1, indent: 64),
+                        _buildSettingRow(
+                          icon: Icons.vibration_rounded,
+                          iconColor: AppColors.primary,
+                          title: 'Haptic Feedback',
+                          subtitle: 'Device vibrations',
+                          trailing: Switch(
+                            value: prefs.hapticsEnabled,
+                            onChanged: (_) => prefs.toggleHaptics(),
+                            activeColor: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // CONTENT
+                  _buildSectionLabel('CONTENT'),
+                  GlassCard(
+                    padding: EdgeInsets.zero,
+                    borderRadius: 24,
+                    child: Column(
+                      children: [
+                        _buildSettingRow(
+                          icon: Icons.layers_rounded,
+                          iconColor: AppColors.gold,
+                          title: 'Custom Packs',
+                          trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                          onTap: () {}, // Not specified in task, but placeholder for navigation
+                        ),
+                        const Divider(color: Colors.white10, height: 1, indent: 64),
+                        _buildSettingRow(
+                          icon: Icons.history_rounded,
+                          iconColor: Colors.white,
+                          title: 'Game History',
+                          trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // DANGER ZONE
+                  Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: AppColors.tertiaryContainer, size: 16),
+                      const SizedBox(width: 8),
+                      _buildSectionLabel('DANGER ZONE', color: AppColors.tertiaryContainer),
+                    ],
+                  ),
+                  GlassCard(
+                    padding: EdgeInsets.zero,
+                    borderRadius: 24,
+                    blur: 10,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.tertiaryContainer.withAlpha(13),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: AppColors.tertiaryContainer.withAlpha(77)),
+                      ),
+                      child: _buildSettingRow(
+                        icon: Icons.delete_outline_rounded,
+                        iconColor: AppColors.tertiaryContainer,
+                        title: 'Clear All Data',
+                        subtitle: 'Reset everything to zero',
+                        titleColor: AppColors.tertiaryContainer,
+                        trailing: TextButton(
+                          onPressed: () => _showClearDataDialog(context, prefs),
+                          child: Text(
+                            'DELETE',
+                            style: GoogleFonts.sora(
+                              color: AppColors.tertiaryContainer,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Center(
+                    child: Text(
+                      'Made with 🔥 for chaotic families',
+                      style: GoogleFonts.sora(
+                        color: AppColors.textMuted,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 100), // Bottom nav space
+                ],
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionTile({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withAlpha(50)),
+  Widget _buildSectionLabel(String text, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      child: Text(
+        text,
+        style: GoogleFonts.sora(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color ?? AppColors.textMuted,
+          letterSpacing: 2,
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.sora(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.sora(
+            fontSize: 12,
+            color: AppColors.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettingRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+    required Widget trailing,
+    Color? titleColor,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
+                color: iconColor.withAlpha(26),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -173,70 +332,26 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.sora(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: color,
+                      color: titleColor ?? Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.sora(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
+            trailing,
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildInfoTile({
-    required String title,
-    required String value,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceBright.withAlpha(50)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.textMuted.withAlpha(20),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: AppColors.textSecondary, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: AppColors.textMuted,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -246,19 +361,19 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
           'Clear Data?',
-          style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700),
+          style: GoogleFonts.sora(color: Colors.white, fontWeight: FontWeight.w700),
         ),
         content: Text(
           'This will permanently delete your custom packs and saved players. Are you sure?',
-          style: GoogleFonts.poppins(color: AppColors.textSecondary),
+          style: GoogleFonts.sora(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: GoogleFonts.poppins(color: AppColors.textMuted)),
+            child: Text('Cancel', style: GoogleFonts.sora(color: AppColors.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -266,13 +381,13 @@ class SettingsScreen extends StatelessWidget {
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('All data cleared.', style: GoogleFonts.poppins()),
-                  backgroundColor: AppColors.dareRed,
+                  content: Text('All data cleared.', style: GoogleFonts.sora()),
+                  backgroundColor: AppColors.tertiaryContainer,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             },
-            child: Text('Delete', style: GoogleFonts.poppins(color: AppColors.dareRed, fontWeight: FontWeight.w700)),
+            child: Text('Delete', style: GoogleFonts.sora(color: AppColors.tertiaryContainer, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
