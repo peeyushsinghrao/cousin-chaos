@@ -52,6 +52,26 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
     _flipController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _loadStatements();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_gamePlayers.length < 2) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            backgroundColor: const Color(0xFF1A1025),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Add Players First', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: const Text('Go to the Players tab and add at least 2 players to start a game.', style: TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () { Navigator.pop(context); Navigator.pop(context); },
+                child: const Text('Go to Players', style: TextStyle(color: Color(0xFF8B5CF6))),
+              ),
+            ],
+          ),
+        );
+      }
+    });
   }
 
   void _loadStatements() {

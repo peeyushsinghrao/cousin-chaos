@@ -106,6 +106,27 @@ class _AlibiScreenState extends State<AlibiScreen> {
     super.initState();
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 4));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pm = context.read<PlayerManager>();
+      if (pm.players.length < 2) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Add Players First', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: const Text('Go to the Players tab and add at least 2 players to start a game.', style: TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () { Navigator.pop(context); Navigator.pop(context); },
+                child: Text('Go to Players', style: TextStyle(color: AppColors.primary)),
+              ),
+            ],
+          ),
+        );
+      }
+    });
   }
 
   @override

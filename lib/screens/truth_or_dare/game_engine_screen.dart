@@ -11,6 +11,7 @@ import '../../models/pack.dart';
 import '../../services/player_manager.dart';
 import '../../services/pack_manager.dart';
 import '../../services/api_service.dart';
+import '../../widgets/how_to_play_sheet.dart';
 import 'player_setup_screen.dart';
 import 'widgets/physics_wheel.dart';
 import 'widgets/prompt_card.dart';
@@ -39,11 +40,44 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
   List<String> _currentWheelItems = [];
   bool _is18Plus = false;
 
+  static const List<String> _howToPlayRules = [
+    'Spin the wheel to randomly select a player.',
+    'The selected player must choose Truth or Dare.',
+    'Tap the card to reveal your challenge.',
+    'Complete the challenge honestly or bravely.',
+    'Press NEXT to pass to the next player.',
+    'Player with most challenges completed wins.',
+  ];
+
   @override
   void initState() {
     super.initState();
     _loadDeck();
     _generateWheelItems();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pm = context.read<PlayerManager>();
+      if (pm.players.length < 2) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Add Players First', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: const Text('Go to the Players tab and add at least 2 players to start a game.', style: TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+                child: Text('Go to Players', style: TextStyle(color: AppColors.primary)),
+              ),
+            ],
+          ),
+        );
+      }
+    });
   }
 
   void _generateWheelItems() {
@@ -349,16 +383,39 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
                         letterSpacing: 2,
                       ),
                     ),
-                    IconButton(
-                      onPressed: _showManagePlayers,
-                      icon: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(12),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => HowToPlaySheet(
+                              mode: 'Truth & Dare',
+                              icon: LucideIcons.flame,
+                              rules: _howToPlayRules,
+                            ),
+                          ),
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(LucideIcons.info, color: Colors.white, size: 18),
+                          ),
                         ),
-                        child: const Icon(Icons.people_rounded, color: Colors.white, size: 18),
-                      ),
+                        IconButton(
+                          onPressed: _showManagePlayers,
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.people_rounded, color: Colors.white, size: 18),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

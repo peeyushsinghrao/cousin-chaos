@@ -4,10 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'dart:math';
 import 'dart:async';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/leave_game_dialog.dart';
+import '../../models/player.dart';
+import '../../services/player_manager.dart';
+import '../../services/session_service.dart';
+import '../../widgets/xp_popup.dart';
 
 class SpeedChallenge {
   final String text;
@@ -31,6 +36,9 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
   final Set<int> _recentIndices = {};
 
   bool _isLastStanding = false;
+  List<Player> _activePlayers = [];
+  List<Player> _eliminatedPlayers = [];
+  String? _winnerId;
 
   late ConfettiController _confettiController;
 
@@ -55,6 +63,28 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 5));
     _nextChallenge();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pm = context.read<PlayerManager>();
+      _activePlayers = List.from(pm.players);
+      if (pm.players.length < 2) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Add Players First', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: const Text('Go to the Players tab and add at least 2 players to start a game.', style: TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () { Navigator.pop(context); Navigator.pop(context); },
+                child: Text('Go to Players', style: TextStyle(color: AppColors.primary)),
+              ),
+            ],
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -90,6 +120,9 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
         timer.cancel();
         setState(() => _isRunning = false);
         HapticFeedback.heavyImpact();
+        if (_isLastStanding && _activePlayers.length > 1) {
+          _showEliminationDialog();
+        }
       }
     });
   }
@@ -107,8 +140,120 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
     });
   }
 
+  void _showEliminationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            const Icon(Icons.timer_off_rounded, color: AppColors.dareRed),
+            const SizedBox(width: 8),
+            Text('Time\'s Up!', style: GoogleFonts.sora(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Who failed the challenge?', style: GoogleFonts.sora(color: Colors.white70, fontSize: 14)),
+            const SizedBox(height: 12),
+            ..._activePlayers.map((p) => GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                _eliminatePlayer(p);
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.dareRed.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.dareRed.withAlpha(60)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.userX, color: AppColors.dareRed, size: 16),
+                    const SizedBox(width: 10),
+                    Text(p.name, style: GoogleFonts.sora(color: Colors.white, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            )),
+            GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                _nextChallenge();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text('Everyone passed — next challenge', style: GoogleFonts.sora(color: Colors.white54, fontSize: 12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _eliminatePlayer(Player player) {
+    setState(() {
+      _activePlayers.removeWhere((p) => p.name == player.name);
+      _eliminatedPlayers.add(player);
+    });
+
+    if (_activePlayers.length == 1) {
+      _winnerId = _activePlayers.first.name;
+      _confettiController.play();
+      _saveSessionAndShowXp();
+    } else {
+      _nextChallenge();
+    }
+  }
+
+  Future<void> _saveSessionAndShowXp() async {
+    final pm = context.read<PlayerManager>();
+    final allPlayers = pm.players.map((p) => p.name).toList();
+    await SessionService.saveSession(SessionRecord(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      mode: 'Speed Challenge',
+      playedAt: DateTime.now(),
+      players: allPlayers,
+      winner: _winnerId ?? '',
+      themeColor: 'red',
+    ));
+    if (mounted) {
+      final winner = pm.players.where((p) => p.name == _winnerId).firstOrNull;
+      if (winner != null) pm.addXp(winner.id, 75);
+      for (final p in _eliminatedPlayers) {
+        pm.addXp(p.id, 25);
+      }
+      XpPopup.show(context, 75);
+    }
+  }
+
+  void _resetLastStanding() {
+    final pm = context.read<PlayerManager>();
+    setState(() {
+      _activePlayers = List.from(pm.players);
+      _eliminatedPlayers = [];
+      _winnerId = null;
+    });
+    _nextChallenge();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_winnerId != null) return _buildWinnerScreen();
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -137,6 +282,7 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
                 children: [
                   _buildHeader(),
                   _buildModeToggle(),
+                  if (_isLastStanding) _buildLastStandingPlayers(),
                   const SizedBox(height: 12),
                   Expanded(child: _buildMain()),
                   _buildControls(),
@@ -158,6 +304,163 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLastStandingPlayers() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      child: Row(
+        children: [
+          ..._activePlayers.map((p) => Container(
+            margin: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.neonGreen.withAlpha(20),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.neonGreen.withAlpha(80)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.circle, color: AppColors.neonGreen, size: 8),
+                const SizedBox(width: 6),
+                Text(p.name, style: GoogleFonts.sora(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          )),
+          ..._eliminatedPlayers.map((p) => Container(
+            margin: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.dareRed.withAlpha(15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.dareRed.withAlpha(40)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.close, color: AppColors.dareRed, size: 10),
+                const SizedBox(width: 6),
+                Text(p.name, style: GoogleFonts.sora(color: AppColors.textMuted, fontSize: 12, decoration: TextDecoration.lineThrough)),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWinnerScreen() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                colors: [Color(0xFF2D0A0A), AppColors.background],
+                radius: 1.5,
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              colors: const [AppColors.gold, AppColors.neonGreen, AppColors.primary],
+              numberOfParticles: 60,
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FadeInDown(
+                  child: Container(
+                    width: 120, height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(colors: [AppColors.gold, Color(0xFFFF6B00)]),
+                      boxShadow: [BoxShadow(color: AppColors.gold.withAlpha(80), blurRadius: 40, spreadRadius: 10)],
+                    ),
+                    child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 60),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 200),
+                  child: Text('LAST STANDING!', style: GoogleFonts.sora(
+                    fontSize: 14, fontWeight: FontWeight.w800,
+                    color: AppColors.textMuted, letterSpacing: 4,
+                  )),
+                ),
+                const SizedBox(height: 8),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 400),
+                  child: ShaderMask(
+                    shaderCallback: (b) => const LinearGradient(
+                      colors: [AppColors.gold, Color(0xFFFF6B00)],
+                    ).createShader(b),
+                    child: Text(_winnerId!, style: GoogleFonts.sora(
+                      fontSize: 42, fontWeight: FontWeight.w900, color: Colors.white,
+                    )),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 600),
+                  child: Text('wins the Speed Challenge!', style: GoogleFonts.sora(
+                    fontSize: 18, color: Colors.white70,
+                  )),
+                ),
+                const SizedBox(height: 48),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 800),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          _resetLastStanding();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: AppColors.dareRed,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [BoxShadow(color: AppColors.dareRed.withAlpha(60), blurRadius: 20, offset: const Offset(0, 8))],
+                          ),
+                          child: Text('Play Again', style: GoogleFonts.sora(
+                            fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white,
+                          )),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () { HapticFeedback.lightImpact(); Navigator.pop(context); },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: AppColors.surfaceLight),
+                          ),
+                          child: Text('Exit', style: GoogleFonts.sora(
+                            fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white70,
+                          )),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
