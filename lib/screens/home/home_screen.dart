@@ -1,30 +1,19 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/animations.dart';
 import '../../core/widgets/glass_card.dart';
 import '../truth_or_dare/pack_selection_screen.dart';
 import '../settings/settings_screen.dart';
-import '../vault/vault_screen.dart';
-import '../crew/crew_screen.dart';
-import '../daily_challenge/daily_challenge_screen.dart';
 import '../new_modes/act_it_out_screen.dart';
 import '../new_modes/alibi_screen.dart';
-import '../new_modes/bomb_pass_screen.dart';
-import '../new_modes/chaos_mode_screen.dart';
-import '../new_modes/freeze_mode_screen.dart';
-import '../new_modes/hot_seat_screen.dart';
 import '../new_modes/impostor_players_screen.dart';
-import '../../core/navigation/page_transitions.dart';
-import '../new_modes/judge_me_screen.dart';
-import '../new_modes/laugh_attack_screen.dart';
 import '../new_modes/last_standing_screen.dart';
-import '../new_modes/most_likely_screen.dart';
-import '../new_modes/rank_it_screen.dart';
-import '../new_modes/secret_mission_screen.dart';
 import '../new_modes/speed_challenge_screen.dart';
 import '../new_modes/two_truths_one_lie_screen.dart';
-import '../new_modes/target_player_screen.dart';
+import '../../core/navigation/page_transitions.dart';
 import '../../widgets/disclaimer_dialog.dart';
+import '../players/players_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,7 +23,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedTab = 0;
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -43,20 +32,14 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: const Duration(seconds: 15),
         child: Stack(
           children: [
-            // Background Orbs
             _buildBackgroundOrbs(),
-
-            // Main Content
             SafeArea(
               child: Column(
                 children: [
-                  // TopAppBar
                   _buildTopAppBar(),
-
-                  // Tab content
                   Expanded(
                     child: IndexedStack(
-                      index: _selectedTab,
+                      index: _currentIndex,
                       children: [
                         SingleChildScrollView(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -64,18 +47,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               const SizedBox(height: 24),
                               _buildWelcomeSection(),
-                              const SizedBox(height: 24),
-                              _buildDailyChallengeBanner(),
                               const SizedBox(height: 32),
                               _buildGameModeGrid(),
-                              const SizedBox(height: 40),
-                              _buildStatsSection(),
                               const SizedBox(height: 120),
                             ],
                           ),
                         ),
-                        const CrewScreen(),
-                        const VaultScreen(),
+                        const PlayersScreen(),
                         const SettingsScreen(),
                       ],
                     ),
@@ -83,8 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
-            // BottomNavBar — must be inside Stack as Positioned widget
             _buildBottomNavBar(),
           ],
         ),
@@ -96,7 +72,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Positioned.fill(
       child: Stack(
         children: [
-          // Floating Orbs
           Positioned(
             top: -50,
             left: -50,
@@ -171,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           GestureDetector(
-            onTap: () => setState(() => _selectedTab = 3),
+            onTap: () => setState(() => _currentIndex = 2),
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -212,66 +187,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDailyChallengeBanner() {
-    return FadeInUpAnimation(
-      duration: const Duration(milliseconds: 600),
-      child: GlassCard(
-        borderRadius: 24,
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppColors.primaryGradient,
-              ),
-              child: const Center(
-                child: Icon(Icons.local_fire_department_rounded, color: Colors.white),
-              ),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Daily Challenge',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          )),
-                  const SizedBox(height: 6),
-                  Text('Keep the streak alive with today’s chaos dare.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.onSurfaceVariant,
-                          )),
-                ],
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.secondary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  slideUpRoute(const DailyChallengeScreen()),
-                );
-              },
-              child: Text('VIEW', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.black)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildGameModeGrid() {
     return Column(
       children: [
-        // Large Mode Cards
         _buildLargeModeCard(
           title: 'Truth or Dare',
           subtitle: 'Dare to speak?',
@@ -285,9 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
         ),
-        
         const SizedBox(height: 24),
-        
         _buildLargeModeCard(
           title: 'Impostor',
           subtitle: 'Find the traitor',
@@ -299,10 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(context, slideUpRoute(const ImpostorPlayersScreen()));
           },
         ),
-        
         const SizedBox(height: 24),
-        
-        // Horizontal Scroll for Other Modes
         _buildHorizontalScrollModes(),
       ],
     );
@@ -348,7 +261,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Stack(
               children: [
-                // Icon Badge
                 Positioned(
                   top: 16,
                   right: 16,
@@ -361,15 +273,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         blurRadius: 20,
                       ),
                     ],
-                    child: Icon(
-                      icon,
-                      color: color,
-                      size: 24,
-                    ),
+                    child: Icon(icon, color: color, size: 24),
                   ),
                 ),
-                
-                // Content
                 Positioned(
                   bottom: 16,
                   left: 16,
@@ -382,10 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         decoration: BoxDecoration(
                           color: color.withAlpha(51),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: color.withAlpha(76),
-                            width: 1,
-                          ),
+                          border: Border.all(color: color.withAlpha(76), width: 1),
                         ),
                         child: Text(
                           tag,
@@ -425,20 +328,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHorizontalScrollModes() {
     final modes = [
       {'title': 'Act It Out', 'subtitle': 'Charades with a twist', 'icon': Icons.theater_comedy, 'color': AppColors.secondary, 'route': const ActItOutScreen()},
-      {'title': 'Bomb Pass', 'subtitle': 'Keep it moving fast', 'icon': Icons.bolt, 'color': AppColors.tertiary, 'route': const BombPassScreen()},
-      {'title': 'Chaos Mode', 'subtitle': 'Random challenges', 'icon': Icons.shuffle, 'color': AppColors.primary, 'route': const ChaosModeScreen()},
-      {'title': 'Freeze', 'subtitle': 'Stop on command', 'icon': Icons.ac_unit, 'color': AppColors.truthBlue, 'route': const FreezeModeScreen()},
-      {'title': 'Laugh Attack', 'subtitle': 'Who can hold it?', 'icon': Icons.emoji_emotions, 'color': AppColors.neonPink, 'route': const LaughAttackScreen()},
-      {'title': 'Secret Mission', 'subtitle': 'Complete it quietly', 'icon': Icons.visibility_off, 'color': AppColors.primaryNeon, 'route': const SecretMissionScreen()},
       {'title': 'Speed Challenge', 'subtitle': 'Answers under pressure', 'icon': Icons.speed, 'color': AppColors.error, 'route': const SpeedChallengeScreen()},
-      {'title': 'Target Player', 'subtitle': 'Point and play', 'icon': Icons.gps_fixed, 'color': AppColors.secondaryContainer, 'route': const TargetPlayerScreen()},
       {'title': 'Last Standing', 'subtitle': 'Survive the round', 'icon': Icons.emoji_events, 'color': AppColors.gold, 'route': const LastStandingScreen()},
-      {'title': 'Hot Seat', 'subtitle': 'Dares and disclosure', 'icon': Icons.whatshot, 'color': AppColors.dareRed, 'route': const HotSeatScreen()},
       {'title': 'Alibi', 'subtitle': 'Defend your story', 'icon': Icons.verified_user, 'color': AppColors.secondary, 'route': const AlibiScreen()},
-      {'title': 'Most Likely', 'subtitle': 'Pick the group', 'icon': Icons.people, 'color': AppColors.tertiary, 'route': const MostLikelyScreen()},
-      {'title': 'Rank It', 'subtitle': 'Order the players', 'icon': Icons.leaderboard, 'color': AppColors.neonGreen, 'route': const RankItScreen()},
       {'title': 'Two Truths', 'subtitle': 'Find the lie', 'icon': Icons.sentiment_satisfied_alt, 'color': AppColors.surfaceContainerHigh, 'route': const TwoTruthsOneLieScreen()},
-      {'title': 'Judge Me', 'subtitle': 'Vote and reveal', 'icon': Icons.gavel, 'color': AppColors.gold, 'route': const JudgeMeScreen()},
     ];
 
     return SizedBox(
@@ -455,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => Navigator.push(context, slideUpRoute(mode['route'] as Widget)),
               child: GlassCard(
                 borderRadius: 18,
-                padding: const EdgeInsets.all(0),
+                padding: EdgeInsets.zero,
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.surfaceContainer,
@@ -529,216 +422,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStatsSection() {
-    return Column(
-      children: [
-        // Chaos Meter
-        FadeInUpAnimation(
-          duration: const Duration(milliseconds: 600),
-          delay: const Duration(milliseconds: 500),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'CHAOS METER',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  Text(
-                    '85% CRITICAL',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(13),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: FractionallySizedBox(
-                    widthFactor: 0.85,
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        const SizedBox(height: 24),
-        
-        // Stats Grid
-        Row(
-          children: [
-            Expanded(
-              child: FadeInUpAnimation(
-                duration: const Duration(milliseconds: 600),
-                delay: const Duration(milliseconds: 600),
-                child: GlassCard(
-                  borderRadius: 16,
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'CREW ACTIVE',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.onSurfaceVariant,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '12',
-                            style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                              color: AppColors.primary,
-                              fontSize: 32,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(
-                              'Friends',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.primary.withAlpha(153),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: FadeInUpAnimation(
-                duration: const Duration(milliseconds: 600),
-                delay: const Duration(milliseconds: 700),
-                child: GlassCard(
-                  borderRadius: 16,
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'TOTAL VAULT',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.onSurfaceVariant,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '4.2k',
-                            style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                              color: AppColors.secondary,
-                              fontSize: 32,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(
-                              'XP',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.secondary.withAlpha(153),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-
   Widget _buildBottomNavBar() {
     return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainer.withAlpha(102),
-          border: Border(
-            top: BorderSide(
-              color: Colors.white.withAlpha(26),
-              width: 1,
+      bottom: 24,
+      left: 24,
+      right: 24,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
             ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withAlpha(76),
-              blurRadius: 40,
-              spreadRadius: -10,
-              offset: const Offset(0, -10),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(
-                  icon: Icons.sports_esports,
-                  label: 'Chaos',
-                  isSelected: _selectedTab == 0,
-                  onTap: () => setState(() => _selectedTab = 0),
-                ),
-                _buildNavItem(
-                  icon: Icons.group,
-                  label: 'Crew',
-                  isSelected: _selectedTab == 1,
-                  onTap: () => setState(() => _selectedTab = 1),
-                ),
-                _buildNavItem(
-                  icon: Icons.history,
-                  label: 'Vault',
-                  isSelected: _selectedTab == 2,
-                  onTap: () => setState(() => _selectedTab = 2),
-                ),
-                _buildNavItem(
-                  icon: Icons.settings,
-                  label: 'Settings',
-                  isSelected: _selectedTab == 3,
-                  onTap: () => setState(() => _selectedTab = 3),
-                ),
+                _buildNavItem(0, Icons.bolt, 'Chaos'),
+                _buildNavItem(1, Icons.group, 'Players'),
+                _buildNavItem(2, Icons.settings_rounded, 'Settings'),
               ],
             ),
           ),
@@ -747,46 +452,31 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final isActive = _currentIndex == index;
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withAlpha(51) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withAlpha(102),
-                    blurRadius: 15,
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withAlpha(178),
-              size: 24,
+      onTap: () => setState(() => _currentIndex = index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ShaderMask(
+            shaderCallback: (bounds) => isActive
+                ? LinearGradient(colors: [AppColors.primary, AppColors.secondary])
+                    .createShader(bounds)
+                : const LinearGradient(colors: [Colors.white54, Colors.white54])
+                    .createShader(bounds),
+            child: Icon(icon, size: 24, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive ? AppColors.primary : Colors.white54,
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant.withAlpha(178),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
