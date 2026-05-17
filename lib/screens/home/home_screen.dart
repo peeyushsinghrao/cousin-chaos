@@ -11,7 +11,7 @@ import '../truth_or_dare/pack_selection_screen.dart';
 import '../settings/settings_screen.dart';
 import '../new_modes/act_it_out_screen.dart';
 import '../new_modes/alibi_screen.dart';
-import '../new_modes/impostor_players_screen.dart';
+import '../new_modes/impostor_settings_screen.dart';
 import '../new_modes/speed_challenge_screen.dart';
 import '../new_modes/two_truths_one_lie_screen.dart';
 import '../would_you_rather/wyr_game_screen.dart';
@@ -89,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           icon: Icons.person_search_rounded,
           color: AppColors.tertiary,
           colorDark: const Color(0xFF661931),
-          builder: (_) => const ImpostorPlayersScreen(),
+          builder: (_) => const ImpostorSettingsScreen(),
         ),
         _ModeData(
           name: 'Act It Out',

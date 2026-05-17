@@ -5,19 +5,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/impostor_data.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/navigation/page_transitions.dart';
-import '../../models/impostor_player.dart';
-import 'impostor_game_screen.dart';
+import 'impostor_players_screen.dart';
 
 class ImpostorSettingsScreen extends StatefulWidget {
-  final List<ImpostorPlayer> players;
-  const ImpostorSettingsScreen({super.key, required this.players});
+  const ImpostorSettingsScreen({super.key});
 
   @override
   State<ImpostorSettingsScreen> createState() => _ImpostorSettingsScreenState();
 }
 
 class _ImpostorSettingsScreenState extends State<ImpostorSettingsScreen> {
-  late int _impostorCount;
   bool _timeLimitEnabled = false;
   int _timeLimitSeconds = 180;
   String _selectedCategory = 'GAMING';
@@ -26,57 +23,10 @@ class _ImpostorSettingsScreenState extends State<ImpostorSettingsScreen> {
 
   final List<int> _timeLimitOptions = [60, 90, 120, 180, 240, 300, 420, 600];
 
-  @override
-  void initState() {
-    super.initState();
-    _impostorCount = _getRecommendedImpostorCount(widget.players.length);
-  }
-
-  int _getRecommendedImpostorCount(int playerCount) {
-    if (playerCount <= 7) return 1;
-    if (playerCount <= 9) return 2;
-    if (playerCount <= 11) return 3;
-    if (playerCount <= 13) return 4;
-    if (playerCount <= 15) return 5;
-    if (playerCount <= 17) return 6;
-    if (playerCount <= 19) return 7;
-    return 8;
-  }
-
   String _formatSeconds(int s) {
     final m = s ~/ 60;
     final r = s % 60;
     return r == 0 ? '${m}m' : '${m}m ${r}s';
-  }
-
-  void _showImpostorCountSheet() {
-    final max = widget.players.length - 1;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceLight,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text('Impostors', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
-          ),
-          ...List.generate(max, (i) {
-            final n = i + 1;
-            return ListTile(
-              title: Text('$n impostor${n > 1 ? 's' : ''}', style: GoogleFonts.poppins(color: Colors.white)),
-              trailing: _impostorCount == n ? const Icon(Icons.check_rounded, color: AppColors.neonPink) : null,
-              onTap: () {
-                setState(() => _impostorCount = n);
-                Navigator.pop(context);
-              },
-            );
-          }),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
   }
 
   void _showTimeLimitSheet() {
@@ -143,16 +93,14 @@ class _ImpostorSettingsScreenState extends State<ImpostorSettingsScreen> {
     );
   }
 
-  void _startGame() {
+  void _onNext() {
     HapticFeedback.mediumImpact();
     Navigator.push(
       context,
-      slideUpRoute(ImpostorGameScreen(
+      slideUpRoute(ImpostorPlayersScreen(
         category: _selectedCategory,
-        players: widget.players,
-        impostorCount: _impostorCount,
         timeLimitEnabled: _timeLimitEnabled,
-        timeLimitSeconds: _timeLimitEnabled ? _timeLimitSeconds : null,
+        timeLimitSeconds: _timeLimitSeconds,
         showCategoryToImpostor: _showCategoryToImpostor,
         showHintToImpostor: _showHintToImpostor,
       )),
@@ -179,100 +127,93 @@ class _ImpostorSettingsScreenState extends State<ImpostorSettingsScreen> {
           ),
         ),
         title: Text(
-          'SETTINGS',
+          'GAME SETTINGS',
           style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.neonPink, letterSpacing: 2),
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                _buildInfoTile(
-                  icon: Icons.people_rounded,
-                  label: 'Players',
-                  value: '${widget.players.length}',
-                ),
-                const SizedBox(height: 12),
-                _buildTappableTile(
-                  icon: Icons.person_off_rounded,
-                  label: 'Impostors',
-                  value: '$_impostorCount',
-                  onTap: _showImpostorCountSheet,
-                ),
-                const SizedBox(height: 12),
-                _buildToggleTile(
-                  icon: Icons.timer_rounded,
-                  label: 'Time Limit',
-                  value: _timeLimitEnabled,
-                  subtitle: _timeLimitEnabled ? _formatSeconds(_timeLimitSeconds) : 'Off',
-                  onToggle: (v) => setState(() => _timeLimitEnabled = v),
-                  onSubtitleTap: _showTimeLimitSheet,
-                ),
-                const SizedBox(height: 12),
-                _buildTappableTile(
-                  icon: Icons.category_rounded,
-                  label: 'Category',
-                  value: _selectedCategory,
-                  onTap: _showCategorySheet,
-                ),
-                const SizedBox(height: 12),
-                _buildToggleTile(
-                  icon: Icons.visibility_rounded,
-                  label: 'Show Category to Impostor',
-                  value: _showCategoryToImpostor,
-                  onToggle: (v) => setState(() => _showCategoryToImpostor = v),
-                ),
-                const SizedBox(height: 12),
-                _buildToggleTile(
-                  icon: Icons.lightbulb_rounded,
-                  label: 'Show Hint to Impostor',
-                  value: _showHintToImpostor,
-                  onToggle: (v) => setState(() => _showHintToImpostor = v),
-                ),
-              ],
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            colors: [AppColors.neonPink.withAlpha(25), AppColors.background],
+            radius: 1.0,
+            center: Alignment.topCenter,
           ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.neonPink,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                ),
-                onPressed: _startGame,
-                child: Text(
-                  'START GAME',
-                  style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  _buildSectionLabel('Content'),
+                  const SizedBox(height: 10),
+                  _buildTappableTile(
+                    icon: Icons.category_rounded,
+                    label: 'Category',
+                    value: _selectedCategory,
+                    onTap: _showCategorySheet,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildSectionLabel('Rules'),
+                  const SizedBox(height: 10),
+                  _buildToggleTile(
+                    icon: Icons.timer_rounded,
+                    label: 'Time Limit',
+                    value: _timeLimitEnabled,
+                    subtitle: _timeLimitEnabled ? _formatSeconds(_timeLimitSeconds) : 'Off',
+                    onToggle: (v) => setState(() => _timeLimitEnabled = v),
+                    onSubtitleTap: _showTimeLimitSheet,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildToggleTile(
+                    icon: Icons.visibility_rounded,
+                    label: 'Show Category to Impostor',
+                    value: _showCategoryToImpostor,
+                    onToggle: (v) => setState(() => _showCategoryToImpostor = v),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildToggleTile(
+                    icon: Icons.lightbulb_rounded,
+                    label: 'Show Hint to Impostor',
+                    value: _showHintToImpostor,
+                    onToggle: (v) => setState(() => _showHintToImpostor = v),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.neonPink,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  ),
+                  onPressed: _onNext,
+                  child: Text(
+                    'NEXT — PLAYERS',
+                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInfoTile({required IconData icon, required String label, required String value}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.surfaceBright),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.neonPink, size: 22),
-          const SizedBox(width: 16),
-          Expanded(child: Text(label, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15))),
-          Text(value, style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 15)),
-        ],
+  Widget _buildSectionLabel(String label) {
+    return Text(
+      label.toUpperCase(),
+      style: GoogleFonts.poppins(
+        color: AppColors.textMuted,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.5,
       ),
     );
   }

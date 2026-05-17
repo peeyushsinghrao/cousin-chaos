@@ -5,10 +5,23 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/navigation/page_transitions.dart';
 import '../../models/impostor_player.dart';
-import 'impostor_settings_screen.dart';
+import 'impostor_game_screen.dart';
 
 class ImpostorPlayersScreen extends StatefulWidget {
-  const ImpostorPlayersScreen({super.key});
+  final String category;
+  final bool timeLimitEnabled;
+  final int timeLimitSeconds;
+  final bool showCategoryToImpostor;
+  final bool showHintToImpostor;
+
+  const ImpostorPlayersScreen({
+    super.key,
+    required this.category,
+    required this.timeLimitEnabled,
+    required this.timeLimitSeconds,
+    required this.showCategoryToImpostor,
+    required this.showHintToImpostor,
+  });
 
   @override
   State<ImpostorPlayersScreen> createState() => _ImpostorPlayersScreenState();
@@ -23,6 +36,24 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
 
   int _nextId = 4;
   int? _editingIndex;
+  late int _impostorCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _impostorCount = _recommendedImpostorCount(_players.length);
+  }
+
+  int _recommendedImpostorCount(int playerCount) {
+    if (playerCount <= 7) return 1;
+    if (playerCount <= 9) return 2;
+    if (playerCount <= 11) return 3;
+    if (playerCount <= 13) return 4;
+    if (playerCount <= 15) return 5;
+    if (playerCount <= 17) return 6;
+    if (playerCount <= 19) return 7;
+    return 8;
+  }
 
   void _addPlayer() {
     if (_players.length >= 20) return;
@@ -30,6 +61,8 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
     setState(() {
       _players.add(ImpostorPlayer(id: 'p$_nextId', name: 'Player $_nextId'));
       _nextId++;
+      final max = _players.length - 1;
+      if (_impostorCount > max) _impostorCount = max;
     });
   }
 
@@ -41,15 +74,55 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
         _editingIndex = null;
       }
       _players.removeLast();
+      final max = _players.length - 1;
+      if (_impostorCount > max) _impostorCount = max.clamp(1, max);
     });
   }
 
-  void _onNext() {
+  void _showImpostorCountSheet() {
+    final max = _players.length - 1;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceLight,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text('Impostors', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+          ),
+          ...List.generate(max, (i) {
+            final n = i + 1;
+            return ListTile(
+              title: Text('$n impostor${n > 1 ? 's' : ''}', style: GoogleFonts.poppins(color: Colors.white)),
+              trailing: _impostorCount == n ? const Icon(Icons.check_rounded, color: AppColors.neonPink) : null,
+              onTap: () {
+                setState(() => _impostorCount = n);
+                Navigator.pop(context);
+              },
+            );
+          }),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  void _startGame() {
     HapticFeedback.mediumImpact();
     setState(() => _editingIndex = null);
     Navigator.push(
       context,
-      slideUpRoute(ImpostorSettingsScreen(players: List.from(_players))),
+      slideUpRoute(ImpostorGameScreen(
+        category: widget.category,
+        players: List.from(_players),
+        impostorCount: _impostorCount,
+        timeLimitEnabled: widget.timeLimitEnabled,
+        timeLimitSeconds: widget.timeLimitEnabled ? widget.timeLimitSeconds : null,
+        showCategoryToImpostor: widget.showCategoryToImpostor,
+        showHintToImpostor: widget.showHintToImpostor,
+      )),
     );
   }
 
@@ -82,7 +155,6 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
           ),
         ),
         centerTitle: true,
-        actions: const [],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -141,8 +213,9 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
                 itemBuilder: (context, i) => _buildPlayerRow(i),
               ),
             ),
+            _buildImpostorRow(),
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -151,9 +224,9 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   ),
-                  onPressed: _onNext,
+                  onPressed: _startGame,
                   child: Text(
-                    'NEXT — SETTINGS',
+                    'START GAME',
                     style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontSize: 16,
@@ -164,6 +237,39 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImpostorRow() {
+    return GestureDetector(
+      onTap: _showImpostorCountSheet,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.surfaceBright),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.person_off_rounded, color: AppColors.neonPink, size: 22),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                'Impostors',
+                style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
+              ),
+            ),
+            Text(
+              '$_impostorCount',
+              style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 15),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
           ],
         ),
       ),
