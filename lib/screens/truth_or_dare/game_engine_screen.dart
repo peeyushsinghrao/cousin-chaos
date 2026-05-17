@@ -11,9 +11,11 @@ import '../../models/pack.dart';
 import '../../services/player_manager.dart';
 import '../../services/pack_manager.dart';
 import '../../services/api_service.dart';
+import '../../services/chaos_event_service.dart';
 import '../../widgets/how_to_play_sheet.dart';
+import '../../widgets/chaos_event_overlay.dart';
 import 'player_setup_screen.dart';
-import 'widgets/physics_wheel.dart';
+import 'widgets/physics_wheel_3d.dart';
 import 'widgets/prompt_card.dart';
 
 enum GamePhase { spinPlayer, spinType, showCard }
@@ -207,9 +209,26 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
 
   void _onNextPlayer() {
     final playerManager = context.read<PlayerManager>();
+    // Award XP for completing a challenge
+    if (_selectedType != null && playerManager.players.isNotEmpty) {
+      final p = playerManager.players[_currentPlayerIndex % playerManager.players.length];
+      playerManager.addXp(p.id, _selectedType == 'dare' ? 15 : 10);
+    }
+
+    // Chaos event check
+    final chaosEvent = ChaosEventService.maybeGetEvent(probability: 0.15);
+    if (chaosEvent != null && mounted) {
+      ChaosEventOverlay.show(context, chaosEvent, () {
+        _advancePlayer(playerManager);
+      });
+      return;
+    }
+    _advancePlayer(playerManager);
+  }
+
+  void _advancePlayer(PlayerManager playerManager) {
     setState(() {
       _currentPlayerIndex = (_currentPlayerIndex + 1) % playerManager.players.length;
-
       if (widget.gameMode == GameMode.oneAtATime) {
         _selectedPlayerName = playerManager.players[_currentPlayerIndex].name;
         _phase = GamePhase.spinType;
@@ -474,7 +493,7 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
               ),
             ),
             const SizedBox(height: 30),
-            PhysicsWheel(
+            PhysicsWheel3D(
               items: _currentWheelItems.isEmpty ? ['Loading...'] : _currentWheelItems,
               onSpinComplete: _onPlayerSelected,
             ),
@@ -511,7 +530,7 @@ class _GameEngineScreenState extends State<GameEngineScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              PhysicsWheel(
+              PhysicsWheel3D(
                 items: const ['😇 Truth', '😈 Dare', '😇 Truth', '😈 Dare'],
                 sliceColors: const [
                   AppColors.truthBlue,

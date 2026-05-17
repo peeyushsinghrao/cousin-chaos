@@ -71,4 +71,7 @@ class LucideIcons {
   static const IconData loader = FontAwesomeIcons.spinner;
   static const IconData sun = FontAwesomeIcons.sun;
   static const IconData moon = FontAwesomeIcons.moon;
+  static const IconData palette = FontAwesomeIcons.palette;
+  static const IconData copy = FontAwesomeIcons.copy;
+  static const IconData link = FontAwesomeIcons.link;
 }

@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/animations.dart';
 import '../../services/player_manager.dart';
 import '../../services/session_service.dart';
+import '../../services/theme_pack_service.dart';
 import '../truth_or_dare/pack_selection_screen.dart';
 import '../settings/settings_screen.dart';
 import '../new_modes/act_it_out_screen.dart';
@@ -21,7 +22,11 @@ import '../../core/navigation/page_transitions.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
 import '../../widgets/disclaimer_dialog.dart';
+import 'package:flutter/services.dart';
+import '../../widgets/threed_background.dart';
 import '../players/players_screen.dart';
+import '../leaderboard/leaderboard_screen.dart';
+import '../multiplayer/room_screen.dart';
 
 class _ModeData {
   final String name;
@@ -52,6 +57,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   List<SessionRecord>? _recentSessions;
   late AnimationController _shimmerController;
+
+  // Theme-aware background colors based on active theme pack
+  List<Color> get _bgGradient {
+    // We'll use the default gradient here; theme is applied via ThreeDBBackground
+    return const [Color(0xFF08041A), Color(0xFF0E0624), Color(0xFF08041A)];
+  }
 
   @override
   void initState() {
@@ -160,28 +171,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: Stack(
-          children: [
-            _buildAmbientOrbs(),
-            SafeArea(
-              child: Column(
-                children: [
-                  _buildTopBar(),
-                  Expanded(
-                    child: IndexedStack(
-                      index: _currentIndex,
-                      children: [
-                        _buildChaosTab(),
-                        const PlayersScreen(),
-                        const SettingsScreen(),
-                      ],
+        child: ThreeDBackground(
+          child: Stack(
+            children: [
+              _buildAmbientOrbs(),
+              SafeArea(
+                child: Column(
+                  children: [
+                    _buildTopBar(),
+                    Expanded(
+                      child: IndexedStack(
+                        index: _currentIndex,
+                        children: [
+                          _buildChaosTab(),
+                          const PlayersScreen(),
+                          const LeaderboardScreen(),
+                          const SettingsScreen(),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            _buildBottomNav(),
-          ],
+              _buildBottomNav(),
+            ],
+          ),
         ),
       ),
     );
@@ -750,13 +764,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               borderRadius: BorderRadius.circular(28),
               border: Border.all(color: Colors.white.withAlpha(22)),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(0, LucideIcons.zap, 'Chaos'),
                 _buildNavItem(1, LucideIcons.users, 'Players'),
-                _buildNavItem(2, LucideIcons.settings, 'Settings'),
+                _buildMultiplayerButton(),
+                _buildNavItem(2, Icons.emoji_events_rounded, 'Ranks'),
+                _buildNavItem(3, LucideIcons.settings, 'Settings'),
               ],
             ),
           ),
@@ -765,13 +781,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildMultiplayerButton() {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const RoomScreen()));
+      },
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: AppColors.primaryGradient,
+          boxShadow: [
+            BoxShadow(color: AppColors.primary.withAlpha(100), blurRadius: 16, spreadRadius: 2),
+          ],
+        ),
+        child: const Icon(Icons.wifi_rounded, color: Colors.white, size: 22),
+      ),
+    );
+  }
+
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isActive = _currentIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _currentIndex = index);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isActive ? AppColors.primary.withAlpha(22) : Colors.transparent,
           borderRadius: BorderRadius.circular(18),

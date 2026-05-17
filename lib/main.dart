@@ -8,9 +8,12 @@ import 'services/player_manager.dart';
 import 'services/pack_manager.dart';
 import 'services/preferences_service.dart';
 import 'services/impostor_pack_manager.dart';
+import 'services/theme_pack_service.dart';
+import 'services/supabase_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseService.initialize();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -28,6 +31,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => PackManager()),
         ChangeNotifierProvider(create: (_) => PreferencesService()),
         ChangeNotifierProvider(create: (_) => ImpostorPackManager()),
+        ChangeNotifierProvider(create: (_) => ThemePackService()),
       ],
       child: const CousinChaosApp(),
     ),

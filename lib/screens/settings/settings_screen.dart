@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/preferences_service.dart';
+import '../../services/theme_pack_service.dart';
+import 'theme_picker_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -107,6 +109,21 @@ class SettingsScreen extends StatelessWidget {
                             onChanged: prefs.setWheelStyle,
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 20),
+                      _SectionHeader(label: 'Appearance', icon: LucideIcons.palette, color: AppColors.primary),
+                      Consumer<ThemePackService>(
+                        builder: (ctx, themeService, _) => _SettingsGroup(
+                          children: [
+                            _ActionRow(
+                              title: 'Theme Pack',
+                              subtitle: '${themeService.active.emoji} ${themeService.active.name}',
+                              icon: LucideIcons.palette,
+                              color: AppColors.primary,
+                              onTap: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const ThemePickerScreen())),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 20),
                       _SectionHeader(label: 'Data', icon: LucideIcons.trash, color: AppColors.dareRed),
