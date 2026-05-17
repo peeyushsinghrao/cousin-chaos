@@ -27,7 +27,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "flutter build web --release && python3 serve.py"
+args = "python3 serve.py"
 waitForPort = 5000
 
 [[ports]]
@@ -36,7 +36,7 @@ externalPort = 80
 
 [[ports]]
 localPort = 23636
-externalPort = 3000
+externalPort = 3001
 
 [deployment]
 deploymentTarget = "static"
