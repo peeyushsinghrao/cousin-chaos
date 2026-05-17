@@ -249,13 +249,30 @@ class _AlibiScreenState extends State<AlibiScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Alibi',
-              style: GoogleFonts.sora(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withAlpha(20)),
+                    ),
+                    child: const Icon(LucideIcons.arrowLeft, color: Colors.white, size: 18),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Text(
+                  'Alibi',
+                  style: GoogleFonts.sora(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
