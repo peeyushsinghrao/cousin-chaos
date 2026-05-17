@@ -302,9 +302,9 @@ class _HomeScreenState extends State<HomeScreen> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.0,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1.65,
       ),
       itemCount: modes.length,
       itemBuilder: (context, index) =>
@@ -315,78 +315,74 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildModeCard(
       BuildContext context, _ModeData mode, int index) {
     return FadeInUpAnimation(
-      duration: Duration(milliseconds: 400 + index * 60),
+      duration: Duration(milliseconds: 300 + index * 50),
       child: GestureDetector(
         onTap: () => _onModeTap(context, mode),
         child: Container(
           decoration: BoxDecoration(
             color: AppColors.surfaceContainer,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: mode.color.withAlpha(60), width: 1.5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: mode.color.withAlpha(50), width: 1),
             boxShadow: [
               BoxShadow(
-                color: mode.color.withAlpha(30),
-                blurRadius: 20,
-                spreadRadius: -4,
-                offset: const Offset(0, 8),
+                color: mode.color.withAlpha(20),
+                blurRadius: 12,
+                spreadRadius: -2,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: -20,
-                right: -20,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: mode.color.withAlpha(20),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
-                        color: mode.color.withAlpha(40),
-                        borderRadius: BorderRadius.circular(12),
+                        color: mode.color.withAlpha(35),
+                        borderRadius: BorderRadius.circular(9),
                       ),
-                      child: Icon(mode.icon,
-                          color: mode.color, size: 22),
+                      child: Icon(mode.icon, color: mode.color, size: 17),
                     ),
                     const Spacer(),
-                    Text(
-                      mode.name,
-                      style: GoogleFonts.sora(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: mode.color.withAlpha(180),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      mode.tagline,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: mode.color,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-              ),
-            ],
+                const Spacer(),
+                Text(
+                  mode.name,
+                  style: GoogleFonts.sora(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  mode.tagline,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: mode.color.withAlpha(200),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
