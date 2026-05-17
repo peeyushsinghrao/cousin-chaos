@@ -16,7 +16,6 @@ import '../new_modes/speed_challenge_screen.dart';
 import '../new_modes/two_truths_one_lie_screen.dart';
 import '../would_you_rather/wyr_game_screen.dart';
 import '../never_have_i_ever/nhie_game_screen.dart';
-import '../ludo/ludo_setup_screen.dart';
 import '../../core/navigation/page_transitions.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
@@ -100,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           builder: (_) => const ActItOutScreen(),
         ),
         _ModeData(
-          name: 'Two Truths',
+          name: 'Two Truths\nOne Lie',
           tagline: 'Find the lie',
           icon: Icons.psychology_alt_rounded,
           color: const Color(0xFF93C5FD),
@@ -132,20 +131,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           builder: (_) => const WouldYouRatherScreen(),
         ),
         _ModeData(
-          name: 'Never Have I',
+          name: 'Never Have\nI Ever',
           tagline: 'Confess secrets',
           icon: Icons.ramen_dining_rounded,
           color: AppColors.neonOrange,
           colorDark: const Color(0xFF4A1F0A),
           builder: (_) => const NeverHaveIEverScreen(),
-        ),
-        _ModeData(
-          name: 'Ludo Chaos',
-          tagline: '13 ways to cause chaos',
-          icon: Icons.casino_rounded,
-          color: AppColors.neonYellow,
-          colorDark: const Color(0xFF4A3800),
-          builder: (_) => const LudoSetupScreen(),
         ),
       ];
 
@@ -542,84 +533,120 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildModeGrid() {
     final gridModes = _modes.sublist(1);
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.55,
-      ),
-      itemCount: gridModes.length,
-      itemBuilder: (ctx, i) => _buildModeCard(ctx, gridModes[i], i),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = constraints.maxWidth > 520 ? 3 : 2;
+        final ratio = constraints.maxWidth > 520 ? 1.15 : 1.18;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: ratio,
+          ),
+          itemCount: gridModes.length,
+          itemBuilder: (ctx, i) => _buildModeCard(ctx, gridModes[i], i),
+        );
+      },
     );
   }
 
   Widget _buildModeCard(BuildContext context, _ModeData mode, int index) {
     return FadeInUpAnimation(
-      duration: Duration(milliseconds: 350 + index * 50),
-      child: GestureDetector(
+      duration: Duration(milliseconds: 320 + index * 45),
+      child: _PressCard(
         onTap: () => _onModeTap(context, mode),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF120E1E),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: mode.color.withAlpha(45), width: 1),
+            color: const Color(0xFF110D1C),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: mode.color.withAlpha(55), width: 1),
             boxShadow: [
               BoxShadow(
-                color: mode.color.withAlpha(18),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                color: mode.color.withAlpha(28),
+                blurRadius: 20,
+                spreadRadius: -2,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(13),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(7),
-                      decoration: BoxDecoration(
-                        color: mode.color.withAlpha(22),
-                        borderRadius: BorderRadius.circular(9),
-                        border: Border.all(color: mode.color.withAlpha(40)),
+                // Watermark icon
+                Positioned(
+                  bottom: -10,
+                  right: -10,
+                  child: Icon(mode.icon, size: 68, color: mode.color.withAlpha(18)),
+                ),
+                // Top accent line
+                Positioned(
+                  top: 0, left: 24, right: 24,
+                  child: Container(
+                    height: 2,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.transparent, mode.color.withAlpha(180), Colors.transparent],
                       ),
-                      child: Icon(mode.icon, color: mode.color, size: 16),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    const Spacer(),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      color: mode.color.withAlpha(100),
-                      size: 11,
+                  ),
+                ),
+                // Centered content
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: mode.color.withAlpha(22),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: mode.color.withAlpha(80), width: 1.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: mode.color.withAlpha(40),
+                                blurRadius: 10,
+                                spreadRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Icon(mode.icon, color: mode.color, size: 19),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          mode.name,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.sora(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            height: 1.25,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          mode.tagline,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.sora(
+                            fontSize: 9.5,
+                            color: mode.color.withAlpha(200),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  mode.name,
-                  style: GoogleFonts.sora(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    height: 1.2,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  mode.tagline,
-                  style: GoogleFonts.sora(
-                    fontSize: 10,
-                    color: mode.color.withAlpha(180),
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -758,6 +785,59 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// 3-D press-down card — scales + adds perspective depth on tap
+class _PressCard extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  const _PressCard({required this.child, required this.onTap});
+  @override
+  State<_PressCard> createState() => _PressCardState();
+}
+
+class _PressCardState extends State<_PressCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 110));
+    _scale = Tween<double>(begin: 1.0, end: 0.91)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) {
+        _ctrl.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _ctrl.reverse(),
+      child: AnimatedBuilder(
+        animation: _scale,
+        builder: (_, child) => Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.0012)
+            ..scale(_scale.value),
+          child: child,
+        ),
+        child: widget.child,
       ),
     );
   }
