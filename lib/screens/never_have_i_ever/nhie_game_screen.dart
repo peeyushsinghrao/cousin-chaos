@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -202,7 +203,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
               decoration: BoxDecoration(
                   color: AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
+              child: const Icon(LucideIcons.arrowLeft,
                   color: Colors.white, size: 18),
             ),
           ),
@@ -694,7 +695,7 @@ class _NeverHaveIEverScreenState extends State<NeverHaveIEverScreen>
                         decoration: BoxDecoration(
                             color: AppColors.surfaceLight,
                             borderRadius: BorderRadius.circular(12)),
-                        child: const Icon(Icons.arrow_back_ios_new_rounded,
+                        child: const Icon(LucideIcons.arrowLeft,
                             color: Colors.white, size: 18),
                       ),
                     ),

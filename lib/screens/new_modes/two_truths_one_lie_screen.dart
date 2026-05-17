@@ -1,356 +1,804 @@
+import 'package:cousin_chaos/core/icons.dart';
+import 'dart:math';
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/animations.dart';
 import '../../core/widgets/leave_game_dialog.dart';
-import '../../services/haptic_service.dart';
 import '../../services/player_manager.dart';
-import '../../services/preferences_service.dart';
-import '../../services/sound_service.dart';
-
-enum _TTLPhase { setup, passDevice, enter, vote, reveal, score }
+import '../../services/session_service.dart';
 
 class TwoTruthsOneLieScreen extends StatefulWidget {
   const TwoTruthsOneLieScreen({super.key});
 
   @override
-  State<TwoTruthsOneLieScreen> createState() => _TwoTruthsOneLieScreenState();
+  State<TwoTruthsOneLieScreen> createState() =>
+      _TwoTruthsOneLieScreenState();
 }
 
 class _TwoTruthsOneLieScreenState extends State<TwoTruthsOneLieScreen> {
-  _TTLPhase _phase = _TTLPhase.setup;
-
-  final List<String> _players = ['Player 1', 'Player 2', 'Player 3'];
-  int _nextId = 4;
+  int _phase = 1;
   int _currentPlayerIndex = 0;
-  int _roundsPlayed = 0;
-  int _totalRounds = 3;
 
-  final Map<String, int> _scores = {};
-  final List<TextEditingController> _stmtCtrls = [TextEditingController(), TextEditingController(), TextEditingController()];
-  int _lieIndex = 0;
+  final _truth1Controller = TextEditingController();
+  final _truth2Controller = TextEditingController();
+  final _lieController = TextEditingController();
 
-  List<String> _submittedStatements = [];
-  int _submittedLieIndex = 0;
-  int? _guessedIndex;
+  List<Map<String, dynamic>> _shuffledStatements = [];
+  Map<String, int> _votes = {};
+  String _currentVoter = '';
+  int _currentVoterIndex = 0;
+  List<String> _otherPlayers = [];
+  Map<String, int> _scores = {};
+
+  late ConfettiController _confettiController;
+  final _rng = Random();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final pm = context.read<PlayerManager>();
-      if (pm.players.isNotEmpty) {
-        setState(() {
-          _players.clear();
-          _players.addAll(pm.players.map((p) => p.name));
-          _nextId = _players.length + 1;
-        });
-      }
-    });
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 4));
   }
 
   @override
   void dispose() {
-    for (final c in _stmtCtrls) c.dispose();
+    _truth1Controller.dispose();
+    _truth2Controller.dispose();
+    _lieController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
-  bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
-  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
-
-  void _startGame() {
-    _scores.clear();
-    for (final p in _players) _scores[p] = 0;
-    _currentPlayerIndex = 0;
-    _roundsPlayed = 0;
-    _clearStatements();
-    setState(() => _phase = _TTLPhase.passDevice);
+  String get _currentPlayerName {
+    final pm = context.read<PlayerManager>();
+    if (_currentPlayerIndex >= pm.players.length) return '';
+    return pm.players[_currentPlayerIndex].name;
   }
 
-  void _clearStatements() {
-    for (final c in _stmtCtrls) c.clear();
-    _lieIndex = 0;
-    _guessedIndex = null;
-  }
+  bool get _writingComplete =>
+      _truth1Controller.text.trim().isNotEmpty &&
+      _truth2Controller.text.trim().isNotEmpty &&
+      _lieController.text.trim().isNotEmpty;
 
   void _submitStatements() {
-    final stmts = _stmtCtrls.map((c) => c.text.trim()).toList();
-    if (stmts.any((s) => s.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fill in all 3 statements!')));
-      return;
-    }
-    final lieText = stmts[_lieIndex];
-    _submittedStatements = List<String>.from(stmts)..shuffle();
-    _submittedLieIndex = _submittedStatements.indexOf(lieText);
-    if (_submittedLieIndex == -1) _submittedLieIndex = 0;
-    SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
-    setState(() => _phase = _TTLPhase.vote);
-  }
+    final statements = [
+      {'text': _truth1Controller.text.trim(), 'isLie': false},
+      {'text': _truth2Controller.text.trim(), 'isLie': false},
+      {'text': _lieController.text.trim(), 'isLie': true},
+    ];
+    statements.shuffle(_rng);
+    setState(() {
+      _shuffledStatements = List.from(statements);
+      _votes = {};
+      _currentVoterIndex = 0;
+    });
 
-  void _guess(int index) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Is this the lie?', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Text('"${_submittedStatements[index]}"', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.poppins(color: AppColors.textSecondary))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('This is the lie!', style: GoogleFonts.poppins(color: AppColors.truthBlue, fontWeight: FontWeight.w700))),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) {
-      SoundService.instance.play(
-        index == _submittedLieIndex ? SoundEvent.win : SoundEvent.wrong,
-        soundEnabled: _soundEnabled,
-      );
-      setState(() {
-        _guessedIndex = index;
-        _phase = _TTLPhase.reveal;
-      });
-    }
-  }
+    final pm = context.read<PlayerManager>();
+    _otherPlayers = pm.players
+        .where((p) => p.name != _currentPlayerName)
+        .map((p) => p.name)
+        .toList();
 
-  bool get _guessedCorrectly => _guessedIndex == _submittedLieIndex;
-
-  void _nextRound() {
-    SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: _soundEnabled);
-    final currentPlayer = _players[_currentPlayerIndex];
-    if (!_guessedCorrectly) {
-      _scores[currentPlayer] = (_scores[currentPlayer] ?? 0) + 1;
-    } else {
-      final voters = _players.where((p) => p != currentPlayer).toList();
-      for (final v in voters) { _scores[v] = (_scores[v] ?? 0) + 1; }
+    if (_otherPlayers.isNotEmpty) {
+      _currentVoter = _otherPlayers[0];
     }
-
-    _roundsPlayed++;
-    final totalTurns = _totalRounds * _players.length;
-    if (_roundsPlayed >= totalTurns) {
-      setState(() => _phase = _TTLPhase.score);
-      return;
-    }
-    _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
-    _clearStatements();
-    setState(() => _phase = _TTLPhase.passDevice);
+    setState(() => _phase = 2);
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: _phase == _TTLPhase.setup,
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (_phase == _TTLPhase.setup) return;
-        final leave = await showLeaveGameDialog(context);
+        if (_phase == 1) {
+          Navigator.pop(context);
+          return;
+        }
+        final leave = await showLeaveGameSheet(context);
         if (leave == true && context.mounted) Navigator.pop(context);
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(child: _body()),
+        body: MeshGradientBackground(
+          child: Stack(
+            children: [
+              SafeArea(child: _buildPhase()),
+              Align(
+                alignment: Alignment.topCenter,
+                child: ConfettiWidget(
+                  confettiController: _confettiController,
+                  blastDirectionality: BlastDirectionality.explosive,
+                  colors: const [
+                    AppColors.primary,
+                    AppColors.secondary,
+                    AppColors.gold,
+                  ],
+                  numberOfParticles: 30,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _body() {
+  Widget _buildPhase() {
     switch (_phase) {
-      case _TTLPhase.setup: return _setup();
-      case _TTLPhase.passDevice: return _passDevice();
-      case _TTLPhase.enter: return _enterStatements();
-      case _TTLPhase.vote: return _voteView();
-      case _TTLPhase.reveal: return _revealView();
-      case _TTLPhase.score: return _scoreView();
+      case 1:
+        return _buildWritingPhase();
+      case 2:
+        return _buildPassAndVotePhase();
+      case 3:
+        return _buildRevealPhase();
+      case 4:
+        return _buildScoresPhase();
+      default:
+        return const SizedBox.shrink();
     }
   }
 
-  Widget _setup() => Column(children: [
-    _appBar(),
-    Expanded(child: ListView(padding: const EdgeInsets.symmetric(horizontal: 24), children: [
-      _playerHeader(),
-      const SizedBox(height: 10),
-      ..._players.asMap().entries.map((e) => _playerRow(e.key)),
-      const SizedBox(height: 16),
-      Row(children: [
-        Expanded(child: Text('Rounds each', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 15))),
-        _iconBtn(Icons.remove_rounded, _totalRounds <= 1 ? null : () => setState(() => _totalRounds--), AppColors.textMuted),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text('$_totalRounds', style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800))),
-        _iconBtn(Icons.add_rounded, _totalRounds >= 10 ? null : () => setState(() => _totalRounds++), AppColors.neonGreen),
-      ]),
-    ])),
-    Padding(padding: const EdgeInsets.all(24), child: SizedBox(width: double.infinity, child: ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: AppColors.truthBlue, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-      onPressed: _startGame,
-      child: Text('START', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-    ))),
-  ]);
-
-  Widget _passDevice() => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    const Icon(Icons.lock_rounded, size: 80, color: AppColors.truthBlue),
-    const SizedBox(height: 32),
-    Text('Pass to', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 18)),
-    const SizedBox(height: 8),
-    Text(_players[_currentPlayerIndex], style: GoogleFonts.poppins(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 8),
-    Text('Round ${(_roundsPlayed ~/ _players.length) + 1} of $_totalRounds', style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 14)),
-    const Spacer(),
-    SizedBox(width: double.infinity, child: ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: AppColors.truthBlue, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-      onPressed: () => setState(() => _phase = _TTLPhase.enter),
-      child: Text('READY', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-    )),
-  ]));
-
-  Widget _enterStatements() => Padding(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text(_players[_currentPlayerIndex], style: GoogleFonts.poppins(color: AppColors.truthBlue, fontSize: 20, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 4),
-    Text('Enter 2 truths and 1 lie — then mark the lie below', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 13)),
-    const SizedBox(height: 20),
-    ...List.generate(3, (i) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(child: Text('Statement ${i + 1}', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600))),
-        GestureDetector(
-          onTap: () => setState(() => _lieIndex = i),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _lieIndex == i ? AppColors.dareRed.withAlpha(40) : AppColors.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _lieIndex == i ? AppColors.dareRed : AppColors.surfaceBright),
+  Widget _buildWritingPhase() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(LucideIcons.arrowLeft, color: Colors.white),
+                onPressed: () {
+                  if (_currentPlayerIndex == 0) {
+                    Navigator.pop(context);
+                  } else {
+                    setState(() {
+                      _currentPlayerIndex--;
+                      _truth1Controller.clear();
+                      _truth2Controller.clear();
+                      _lieController.clear();
+                    });
+                  }
+                },
+              ),
+              Expanded(
+                child: Text(
+                  'Pass to $_currentPlayerName',
+                  style: GoogleFonts.sora(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(width: 44),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Write your 2 truths and 1 lie',
+            style: TextStyle(color: Colors.white54),
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: ListView(
+              children: [
+                _buildStatementField(
+                  controller: _truth1Controller,
+                  label: 'Truth 1 ✅',
+                  hint: 'Something true about you...',
+                  accentColor: Colors.green,
+                ),
+                const SizedBox(height: 14),
+                _buildStatementField(
+                  controller: _truth2Controller,
+                  label: 'Truth 2 ✅',
+                  hint: 'Another true thing...',
+                  accentColor: Colors.green,
+                ),
+                const SizedBox(height: 14),
+                _buildStatementField(
+                  controller: _lieController,
+                  label: 'The Lie ❌',
+                  hint: 'Something false that sounds true...',
+                  accentColor: Colors.red,
+                ),
+              ],
             ),
-            child: Text('This is the lie', style: GoogleFonts.poppins(color: _lieIndex == i ? AppColors.dareRed : AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: _writingComplete ? _submitStatements : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                gradient: _writingComplete
+                    ? AppColors.primaryGradient
+                    : null,
+                color: _writingComplete
+                    ? null
+                    : AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: _writingComplete
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withAlpha(80),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Text(
+                'Lock In & Pass',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.sora(
+                  color: _writingComplete
+                      ? Colors.white
+                      : Colors.white38,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatementField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required Color accentColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: accentColor,
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
           ),
         ),
-      ]),
-      const SizedBox(height: 6),
-      TextField(
-        controller: _stmtCtrls[i],
-        style: GoogleFonts.poppins(color: Colors.white, fontSize: 15),
-        maxLines: 2,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: AppColors.surface,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: _lieIndex == i ? AppColors.dareRed : AppColors.surfaceBright)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: _lieIndex == i ? AppColors.dareRed.withAlpha(120) : AppColors.surfaceBright)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: _lieIndex == i ? AppColors.dareRed : AppColors.truthBlue, width: 2)),
-          hintText: i < 2 ? 'A truth about you...' : 'The lie...',
-          hintStyle: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 14),
-          contentPadding: const EdgeInsets.all(14),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          onChanged: (_) => setState(() {}),
+          style: const TextStyle(color: Colors.white),
+          maxLines: 2,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.white30),
+            filled: true,
+            fillColor: AppColors.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.white12),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.white12),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: accentColor, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPassAndVotePhase() {
+    if (_currentVoterIndex >= _otherPlayers.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _phase = 3);
+      });
+      return const SizedBox.shrink();
+    }
+
+    int? _selectedIndex;
+
+    return StatefulBuilder(
+      builder: (context, innerSet) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Text(
+              'Pass to $_currentVoter',
+              style: GoogleFonts.sora(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Which one is the lie?',
+              style: TextStyle(color: Colors.white54),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${_currentVoterIndex + 1} / ${_otherPlayers.length}',
+              style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              _currentPlayerName,
+              style: GoogleFonts.sora(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ..._shuffledStatements.asMap().entries.map((e) {
+              final index = e.key;
+              final stmt = e.value;
+              final isSelected = _selectedIndex == index;
+              return GestureDetector(
+                onTap: () => innerSet(() => _selectedIndex = index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary.withAlpha(40)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.primary
+                          : Colors.white12,
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.surfaceBright,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.white54,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          stmt['text'] as String,
+                          style: GoogleFonts.sora(
+                            color: Colors.white,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const Spacer(),
+            GestureDetector(
+              onTap: _selectedIndex != null
+                  ? () {
+                      HapticFeedback.mediumImpact();
+                      _votes[_currentVoter] = _selectedIndex!;
+                      _currentVoterIndex++;
+                      if (_currentVoterIndex < _otherPlayers.length) {
+                        _currentVoter =
+                            _otherPlayers[_currentVoterIndex];
+                        innerSet(() => _selectedIndex = null);
+                        setState(() {});
+                      } else {
+                        setState(() => _phase = 3);
+                      }
+                    }
+                  : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: _selectedIndex != null
+                      ? AppColors.primaryGradient
+                      : null,
+                  color: _selectedIndex != null
+                      ? null
+                      : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  'Confirm Vote',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.sora(
+                    color: _selectedIndex != null
+                        ? Colors.white
+                        : Colors.white38,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      const SizedBox(height: 14),
-    ])),
-    const Spacer(),
-    SizedBox(width: double.infinity, child: ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: AppColors.truthBlue, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-      onPressed: _submitStatements,
-      child: Text('SUBMIT', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-    )),
-  ]));
-
-  Widget _voteView() => Padding(padding: const EdgeInsets.all(24), child: Column(children: [
-    Text('${_players[_currentPlayerIndex]}\'s statements', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14)),
-    const SizedBox(height: 8),
-    Text('WHICH ONE IS THE LIE?', style: GoogleFonts.poppins(color: AppColors.truthBlue, fontSize: 22, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 24),
-    ...List.generate(_submittedStatements.length, (i) => GestureDetector(
-      onTap: () => _guess(i),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: AppColors.truthBlue.withAlpha(60), width: 1.5)),
-        child: Row(children: [
-          Container(width: 32, height: 32, decoration: BoxDecoration(color: AppColors.truthBlue.withAlpha(40), borderRadius: BorderRadius.circular(10)), alignment: Alignment.center, child: Text('${i + 1}', style: GoogleFonts.poppins(color: AppColors.truthBlue, fontWeight: FontWeight.w800))),
-          const SizedBox(width: 14),
-          Expanded(child: Text(_submittedStatements[i], style: GoogleFonts.poppins(color: Colors.white, fontSize: 15, height: 1.5))),
-        ]),
-      ),
-    )),
-  ]));
-
-  Widget _revealView() {
-    final correct = _guessedCorrectly;
-    return Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Icon(correct ? Icons.check_circle_rounded : Icons.cancel_rounded, size: 80, color: correct ? AppColors.neonGreen : AppColors.dareRed),
-      const SizedBox(height: 16),
-      Text(correct ? 'CORRECT!' : 'FOOLED EVERYONE!', style: GoogleFonts.poppins(color: correct ? AppColors.neonGreen : AppColors.dareRed, fontSize: 28, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 32),
-      Text('The lie was:', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14)),
-      const SizedBox(height: 8),
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: AppColors.dareRed.withAlpha(25), borderRadius: BorderRadius.circular(18), border: Border.all(color: AppColors.dareRed.withAlpha(100))),
-        child: Text(_submittedStatements[_submittedLieIndex], style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, height: 1.5, fontStyle: FontStyle.italic), textAlign: TextAlign.center),
-      ),
-      if (correct) ...[const SizedBox(height: 12), Text('${_players.where((p) => p != _players[_currentPlayerIndex]).length} guesser(s) get a point!', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 13))]
-      else ...[const SizedBox(height: 12), Text('${_players[_currentPlayerIndex]} gets a point for fooling everyone!', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 13))],
-      const Spacer(),
-      SizedBox(width: double.infinity, child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: AppColors.truthBlue, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-        onPressed: _nextRound,
-        child: Text('NEXT', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-      )),
-    ]));
+    );
   }
 
-  Widget _scoreView() {
-    final sorted = _players.toList()..sort((a, b) => (_scores[b] ?? 0).compareTo(_scores[a] ?? 0));
-    return Padding(padding: const EdgeInsets.all(24), child: Column(children: [
-      const SizedBox(height: 24),
-      Text('FINAL SCORES', style: GoogleFonts.poppins(color: AppColors.truthBlue, fontSize: 28, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 32),
-      Expanded(child: ListView.builder(itemCount: sorted.length, itemBuilder: (_, i) {
-        final p = sorted[i];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: i == 0 ? AppColors.truthBlue.withAlpha(25) : AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: i == 0 ? AppColors.truthBlue : AppColors.surfaceBright)),
-          child: Row(children: [
-            Text('${i + 1}', style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 18, fontWeight: FontWeight.w800)),
-            const SizedBox(width: 16),
-            Expanded(child: Text(p, style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700))),
-            Text('${_scores[p]} pts', style: GoogleFonts.poppins(color: AppColors.truthBlue, fontSize: 16, fontWeight: FontWeight.w800)),
-          ]),
-        );
-      })),
-      Row(children: [
-        Expanded(child: OutlinedButton(style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.surfaceBright), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), onPressed: () => Navigator.pop(context), child: Text('Leave', style: GoogleFonts.poppins(color: AppColors.textSecondary)))),
-        const SizedBox(width: 12),
-        Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppColors.truthBlue, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), onPressed: _startGame, child: Text('PLAY AGAIN', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w800)))),
-      ]),
-    ]));
+  Widget _buildRevealPhase() {
+    final lieIndex = _shuffledStatements
+        .indexWhere((s) => s['isLie'] as bool);
+    int correctGuesses = 0;
+    for (final vote in _votes.values) {
+      if (vote == lieIndex) correctGuesses++;
+    }
+
+    final writerPoints = _votes.length - correctGuesses;
+    final voterPoints = correctGuesses;
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Text(
+            'REVEAL 🎭',
+            style: GoogleFonts.sora(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$correctGuesses / ${_otherPlayers.length} guessed it right',
+            style: TextStyle(color: Colors.white54),
+          ),
+          const SizedBox(height: 24),
+          ..._shuffledStatements.asMap().entries.map((e) {
+            final index = e.key;
+            final stmt = e.value;
+            final isLie = stmt['isLie'] as bool;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: isLie
+                    ? Colors.red.withAlpha(30)
+                    : Colors.green.withAlpha(20),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isLie
+                      ? Colors.red.withAlpha(100)
+                      : Colors.green.withAlpha(60),
+                  width: 2,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    isLie ? '❌' : '✅',
+                    style: const TextStyle(fontSize: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          stmt['text'] as String,
+                          style: GoogleFonts.sora(
+                            color: Colors.white,
+                            fontSize: 15,
+                          ),
+                        ),
+                        if (isLie)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'THE LIE',
+                              style: TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    children: _votes.entries
+                        .where((v) => v.value == index)
+                        .map((v) => Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                v.key[0],
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const Spacer(),
+          _ScoreBadge(
+            writerName: _currentPlayerName,
+            writerPoints: writerPoints,
+            voterPoints: voterPoints,
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () {
+              final pm = context.read<PlayerManager>();
+              _scores[_currentPlayerName] =
+                  (_scores[_currentPlayerName] ?? 0) + writerPoints;
+
+              _currentPlayerIndex++;
+              if (_currentPlayerIndex >= pm.players.length) {
+                _confettiController.play();
+                setState(() => _phase = 4);
+              } else {
+                _truth1Controller.clear();
+                _truth2Controller.clear();
+                _lieController.clear();
+                setState(() => _phase = 1);
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                _currentPlayerIndex + 1 < context.read<PlayerManager>().players.length
+                    ? 'Next Player →'
+                    : 'View Scores →',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.sora(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  Widget _appBar() => Padding(padding: const EdgeInsets.all(24), child: Row(children: [
-    GestureDetector(onTap: () => Navigator.pop(context), child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.surfaceBright)), child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18))),
-    const SizedBox(width: 16),
-    Text('2 TRUTHS 1 LIE', style: GoogleFonts.poppins(color: AppColors.truthBlue, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-  ]));
+  Widget _buildScoresPhase() {
+    final sorted = _scores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final winner = sorted.isNotEmpty ? sorted.first.key : '';
+    final pm = context.read<PlayerManager>();
 
-  Widget _playerHeader() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-    Text('${_players.length} players', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-    Row(children: [
-      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() => _players.removeLast()); }, AppColors.dareRed),
-      const SizedBox(width: 10),
-      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
-    ]),
-  ]);
+    SessionService.saveSession(SessionRecord(
+      id: const Uuid().v4(),
+      mode: 'Two Truths, One Lie',
+      playedAt: DateTime.now(),
+      players: pm.players.map((p) => p.name).toList(),
+      winner: winner,
+      themeColor: 'blue',
+    ));
 
-  Widget _playerRow(int i) => Container(
-    margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.surfaceBright)),
-    child: Row(children: [
-      Text('${i + 1}', style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w700)),
-      const SizedBox(width: 12),
-      Expanded(child: TextFormField(initialValue: _players[i], style: GoogleFonts.poppins(color: Colors.white, fontSize: 15), decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true), onChanged: (v) => _players[i] = v)),
-    ]),
-  );
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Text(
+            '🏆 Final Scores',
+            style: GoogleFonts.sora(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          if (winner.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              '$winner wins!',
+              style: TextStyle(
+                color: AppColors.gold,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          Expanded(
+            child: ListView(
+              children: sorted.asMap().entries.map((e) {
+                final isFirst = e.key == 0;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isFirst
+                        ? AppColors.gold.withAlpha(30)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isFirst
+                          ? AppColors.gold.withAlpha(100)
+                          : Colors.white12,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        isFirst ? '🥇' : '${e.key + 1}.',
+                        style: const TextStyle(fontSize: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          e.value.key,
+                          style: GoogleFonts.sora(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      Text(
+                        '${e.value.value} pts',
+                        style: TextStyle(
+                          color: isFirst
+                              ? AppColors.gold
+                              : AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white30),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => setState(() {
+                    _phase = 1;
+                    _currentPlayerIndex = 0;
+                    _scores = {};
+                    _truth1Controller.clear();
+                    _truth2Controller.clear();
+                    _lieController.clear();
+                  }),
+                  child: Text('Play Again',
+                      style: GoogleFonts.sora(color: Colors.white)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () =>
+                      Navigator.popUntil(context, (r) => r.isFirst),
+                  child: Text('Home',
+                      style: GoogleFonts.sora(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-  Widget _iconBtn(IconData icon, VoidCallback? onTap, Color color) => GestureDetector(
-    onTap: onTap,
-    child: Container(width: 36, height: 36, decoration: BoxDecoration(color: onTap != null ? color.withAlpha(30) : AppColors.surfaceLight.withAlpha(100), borderRadius: BorderRadius.circular(10), border: Border.all(color: onTap != null ? color.withAlpha(80) : AppColors.surfaceBright)), child: Icon(icon, color: onTap != null ? color : AppColors.textMuted, size: 18)),
-  );
+class _ScoreBadge extends StatelessWidget {
+  final String writerName;
+  final int writerPoints;
+  final int voterPoints;
+
+  const _ScoreBadge({
+    required this.writerName,
+    required this.writerPoints,
+    required this.voterPoints,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withAlpha(60)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Column(
+            children: [
+              Text(
+                '$writerPoints pts',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '$writerName (writer)',
+                style: TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+          Container(width: 1, height: 40, color: Colors.white12),
+          Column(
+            children: [
+              Text(
+                '$voterPoints pts',
+                style: TextStyle(
+                  color: AppColors.secondary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Correct guesses',
+                style: TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
@@ -104,7 +105,7 @@ class _SessionHistoryScreenState extends State<SessionHistoryScreen> {
                                         shape: BoxShape.circle,
                                         color: AppColors.primary.withAlpha(46),
                                       ),
-                                      child: const Icon(Icons.sports_esports_rounded, color: Colors.white),
+                                      child: const Icon(LucideIcons.gamepad2, color: Colors.white),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(

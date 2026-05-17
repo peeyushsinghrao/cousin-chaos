@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -250,14 +251,14 @@ class _DynamicTimerWidgetState extends State<DynamicTimerWidget> with SingleTick
                 children: [
                   _buildButton(
                     onTap: _resetTimer,
-                    icon: Icons.refresh_rounded,
+                    icon: LucideIcons.refreshCw,
                     label: 'Reset',
                     color: AppColors.surfaceBright,
                     textColor: Colors.white,
                   ),
                   _buildButton(
                     onTap: _toggleTimer,
-                    icon: _isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    icon: _isRunning ? LucideIcons.pause : LucideIcons.play,
                     label: _isRunning ? 'Stop' : 'Start',
                     color: _isRunning ? AppColors.dareRed : AppColors.neonGreen,
                     textColor: Colors.black,

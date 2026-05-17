@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -77,7 +78,7 @@ class _ImpostorCustomPackEditorScreenState extends State<ImpostorCustomPackEdito
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -161,7 +162,7 @@ class _ImpostorCustomPackEditorScreenState extends State<ImpostorCustomPackEdito
                       color: AppColors.neonPink,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(Icons.add, color: Colors.white),
+                    child: const Icon(LucideIcons.plus, color: Colors.white),
                   ),
                 ),
               ],
@@ -192,7 +193,7 @@ class _ImpostorCustomPackEditorScreenState extends State<ImpostorCustomPackEdito
                               style: GoogleFonts.poppins(color: Colors.white),
                             ),
                             trailing: IconButton(
-                              icon: const Icon(Icons.close, color: AppColors.neonPink),
+                              icon: const Icon(LucideIcons.x, color: AppColors.neonPink),
                               onPressed: () {
                                 setState(() => _words.removeAt(index));
                               },

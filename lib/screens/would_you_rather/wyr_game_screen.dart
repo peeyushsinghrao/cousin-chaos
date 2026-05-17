@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -181,7 +182,7 @@ class _WouldYouRatherScreenState extends State<WouldYouRatherScreen>
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+              child: const Icon(LucideIcons.arrowLeft, color: Colors.white, size: 18),
             ),
           ),
           Text('WOULD YOU RATHER', style: GoogleFonts.poppins(

@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -50,7 +51,7 @@ const List<_StepData> _steps = [
   _StepData(
     title: 'YOUR CREW,\nYOUR RULES',
     subtitle: 'Add players & customize',
-    icon: Icons.group_rounded,
+    icon: LucideIcons.users,
     iconColor: AppColors.secondary,
     glowColor: Color(0x6692DBFF),
     gradientTop: Color(0xFF14496B),
@@ -59,7 +60,7 @@ const List<_StepData> _steps = [
   _StepData(
     title: 'READY\nTO PLAY',
     subtitle: '6 game modes await',
-    icon: Icons.sports_esports_rounded,
+    icon: LucideIcons.gamepad2,
     iconColor: AppColors.accent,
     glowColor: Color(0x66FF5167),
     gradientTop: Color(0xFF661931),

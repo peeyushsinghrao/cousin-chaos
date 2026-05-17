@@ -1,18 +1,18 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'dart:async';
 import 'dart:math';
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/animations.dart';
 import '../../core/widgets/leave_game_dialog.dart';
-import '../../data/alibi_questions.dart';
-import '../../services/haptic_service.dart';
 import '../../services/player_manager.dart';
-import '../../services/preferences_service.dart';
-import '../../services/sound_service.dart';
-
-enum _AlibiPhase { setup, crime, prepTimer, giveAlibi, vote, verdict }
+import '../../services/session_service.dart';
+import '../../widgets/category_selector.dart';
 
 class AlibiScreen extends StatefulWidget {
   const AlibiScreen({super.key});
@@ -22,345 +22,975 @@ class AlibiScreen extends StatefulWidget {
 }
 
 class _AlibiScreenState extends State<AlibiScreen> {
-  final Random _rng = Random();
-  _AlibiPhase _phase = _AlibiPhase.setup;
-
-  final List<String> _players = ['Player 1', 'Player 2', 'Player 3'];
-  int _nextId = 4;
+  int _step = 1;
+  List<String> _selectedPlayers = [];
+  List<String> _selectedCategories = [];
+  String _scenario = '';
   int _currentPlayerIndex = 0;
-  int _roundsPerPlayer = 1;
-  int _roundsPlayed = 0;
+  int _currentQuestionIndex = 0;
+  Map<String, bool> _votes = {};
+  List<String> _questions = [];
 
-  String _currentCategory = '';
-  String _currentQuestion = '';
+  late ConfettiController _confettiController;
+  final _rng = Random();
 
-  int _prepSecondsLeft = 30;
-  Timer? _prepTimer;
+  static const _alibiCategories = [
+    'Work',
+    'Party',
+    'Travel',
+    'Family',
+    'Shopping',
+    'Sports',
+    'Nature',
+    'Unexpected',
+  ];
 
-  String? _votedPlayerId;
-  final Map<String, int> _scores = {};
+  static const _scenarios = {
+    'Work': [
+      'You were at an emergency board meeting when the incident occurred.',
+      'Your laptop crashed and you had to stay late to fix critical code.',
+      'A client flew in unexpectedly and needed a 3-hour debrief.',
+    ],
+    'Party': [
+      'You were throwing a surprise birthday party at the time.',
+      'A friend dragged you to a karaoke bar all evening.',
+      'You attended a rooftop gathering you weren\'t supposed to know about.',
+    ],
+    'Travel': [
+      'Your flight was delayed and you were stuck at the airport.',
+      'You took a wrong turn and ended up in the wrong city.',
+      'You were on a road trip with terrible phone signal.',
+    ],
+    'Family': [
+      'You were visiting a relative in the hospital all day.',
+      'Your grandparent called you for an hours-long phone catch-up.',
+      'You were mediating a family argument that escalated.',
+    ],
+    'Shopping': [
+      'You got lost in an IKEA for three hours.',
+      'You were waiting in a very long checkout line.',
+      'Your car broke down outside the mall.',
+    ],
+    'Sports': [
+      'You were coaching a youth football match that ran overtime.',
+      'You were at the gym when the power went out.',
+      'You got stuck at a sports bar watching overtime.',
+    ],
+    'Nature': [
+      'You went hiking and got mildly lost on the trail.',
+      'A sudden rainstorm trapped you in a café.',
+      'Your dog ran off and you spent hours searching.',
+    ],
+    'Unexpected': [
+      'You were helping a stranger who had a car breakdown.',
+      'You accidentally stumbled into a film shoot.',
+      'A meteor shower kept you outside all night.',
+    ],
+  };
+
+  static const _questionTemplates = [
+    'What exactly were you doing at {time}?',
+    'Who else can confirm your whereabouts?',
+    'How long were you there exactly?',
+    'Why didn\'t you contact anyone during this time?',
+    'What did you eat or drink during this time?',
+    'How did you get there and how did you leave?',
+    'Describe what you were wearing that day.',
+    'What was the weather like during your alibi?',
+    'What is the first thing you did after leaving?',
+    'Why should we believe your alibi?',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _currentCategory = alibiQuestionsByCategory.keys.first;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final pm = context.read<PlayerManager>();
-      if (pm.players.isNotEmpty) {
-        setState(() {
-          _players.clear();
-          _players.addAll(pm.players.map((p) => p.name));
-          _nextId = _players.length + 1;
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 4));
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
+  }
+
+  String _generateScenario(List<String> categories) {
+    final cat =
+        categories[_rng.nextInt(categories.length)];
+    final list = _scenarios[cat] ?? _scenarios.values.first;
+    return list[_rng.nextInt(list.length)];
+  }
+
+  List<String> _generateQuestions(String player) {
+    final times = ['3:00 PM', '7:00 PM', '9:30 PM', 'midnight'];
+    final time = times[_rng.nextInt(times.length)];
+    final shuffled = List.from(_questionTemplates)..shuffle(_rng);
+    return shuffled
+        .take(3)
+        .map((q) => q.replaceAll('{time}', time))
+        .cast<String>()
+        .toList();
+  }
+
+  LinearGradient _categoryGradient(String cat) {
+    final gradients = {
+      'Work': LinearGradient(colors: [
+        const Color(0xFF1E3A5F),
+        AppColors.background
+      ]),
+      'Party': LinearGradient(colors: [
+        const Color(0xFF5F1E5F),
+        AppColors.background
+      ]),
+      'Travel': LinearGradient(colors: [
+        const Color(0xFF1E5F5F),
+        AppColors.background
+      ]),
+      'Family': LinearGradient(colors: [
+        const Color(0xFF5F3A1E),
+        AppColors.background
+      ]),
+      'Sports': LinearGradient(colors: [
+        const Color(0xFF1E5F1E),
+        AppColors.background
+      ]),
+      'Nature': LinearGradient(colors: [
+        const Color(0xFF2A5F1E),
+        AppColors.background
+      ]),
+    };
+    return gradients[cat] ??
+        LinearGradient(
+            colors: [AppColors.surfaceLight, AppColors.background]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_step == 1) {
+          Navigator.pop(context);
+          return;
+        }
+        final leave = await showLeaveGameSheet(context);
+        if (leave == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        body: MeshGradientBackground(
+          child: Stack(
+            children: [
+              SafeArea(child: _buildStep()),
+              Align(
+                alignment: Alignment.topCenter,
+                child: ConfettiWidget(
+                  confettiController: _confettiController,
+                  blastDirectionality: BlastDirectionality.explosive,
+                  colors: const [
+                    AppColors.primary,
+                    AppColors.secondary,
+                    AppColors.neonGreen,
+                  ],
+                  numberOfParticles: 30,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStep() {
+    switch (_step) {
+      case 1:
+        return _buildSetup();
+      case 2:
+        return _buildSceneReveal();
+      case 3:
+        return _buildPlanning();
+      case 4:
+        return _buildInterrogation();
+      case 5:
+        return _buildVerdict();
+      case 6:
+        return _buildResults();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildSetup() {
+    return Consumer<PlayerManager>(
+      builder: (context, pm, _) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Alibi',
+              style: GoogleFonts.sora(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Build your cover story together',
+              style: TextStyle(color: Colors.white54),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'SELECT PLAYERS (3–8)',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...pm.players.map((p) {
+              final selected = _selectedPlayers.contains(p.name);
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    if (selected) {
+                      if (_selectedPlayers.length > 3) {
+                        _selectedPlayers.remove(p.name);
+                      }
+                    } else if (_selectedPlayers.length < 8) {
+                      _selectedPlayers.add(p.name);
+                    }
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary.withAlpha(40)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.primary
+                          : Colors.white12,
+                      width: selected ? 2 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor:
+                            AppColors.primary.withAlpha(60),
+                        child: Text(
+                          p.name[0].toUpperCase(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          p.name,
+                          style: GoogleFonts.sora(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (selected)
+                        Icon(LucideIcons.check,
+                            color: AppColors.primary, size: 18),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+            Text(
+              'CATEGORY (2–3)',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            CategorySelector(
+              categories: _alibiCategories,
+              initialSelected: _selectedCategories.isEmpty
+                  ? [_alibiCategories.first]
+                  : _selectedCategories,
+              onChanged: (cats) =>
+                  setState(() => _selectedCategories = cats),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: (_selectedPlayers.length >= 3 &&
+                      _selectedCategories.isNotEmpty)
+                  ? () {
+                      _scenario = _generateScenario(_selectedCategories);
+                      setState(() => _step = 2);
+                    }
+                  : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: (_selectedPlayers.length >= 3 &&
+                          _selectedCategories.isNotEmpty)
+                      ? AppColors.primaryGradient
+                      : null,
+                  color: (_selectedPlayers.length >= 3 &&
+                          _selectedCategories.isNotEmpty)
+                      ? null
+                      : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  'Begin Alibi',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.sora(
+                    color: (_selectedPlayers.length >= 3 &&
+                            _selectedCategories.isNotEmpty)
+                        ? Colors.white
+                        : Colors.white38,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSceneReveal() {
+    bool buttonEnabled = false;
+    final cat = _selectedCategories.isNotEmpty
+        ? _selectedCategories.first
+        : 'Work';
+    return StatefulBuilder(
+      builder: (context, innerSet) {
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) innerSet(() => buttonEnabled = true);
         });
+        return Container(
+          decoration: BoxDecoration(
+              gradient: _categoryGradient(cat)),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(30),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _selectedCategories.join(' · '),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  Text(
+                    '🕵️ THE CRIME SCENE',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      letterSpacing: 2,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _scenario,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.sora(
+                      fontSize: 20,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 64),
+                  AnimatedOpacity(
+                    opacity: buttonEnabled ? 1.0 : 0.3,
+                    duration: const Duration(milliseconds: 400),
+                    child: GestureDetector(
+                      onTap: buttonEnabled
+                          ? () => setState(() => _step = 3)
+                          : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 16, horizontal: 40),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(40),
+                          borderRadius: BorderRadius.circular(50),
+                          border: Border.all(
+                              color: Colors.white54),
+                        ),
+                        child: Text(
+                          "We're Ready",
+                          style: GoogleFonts.sora(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPlanning() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(LucideIcons.brain, color: AppColors.primary, size: 60),
+          const SizedBox(height: 24),
+          Text(
+            'Plan Your Story',
+            style: GoogleFonts.sora(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Coordinate your alibis. Get your story straight.',
+            style: TextStyle(color: Colors.white54),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 48),
+          _PlanningTimer(
+            seconds: 60,
+            onEnd: () => setState(() => _step = 4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInterrogation() {
+    final player = _selectedPlayers[_currentPlayerIndex];
+
+    if (_currentQuestionIndex == 0) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Pass phone to',
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              player,
+              style: GoogleFonts.sora(
+                fontSize: 40,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You\'re in the hot seat 🔥',
+              style: TextStyle(color: AppColors.tertiary),
+            ),
+            const SizedBox(height: 48),
+            Icon(LucideIcons.arrowRight, color: Colors.white, size: 40),
+            const SizedBox(height: 48),
+            GestureDetector(
+              onTap: () {
+                _questions = _generateQuestions(player);
+                setState(() => _currentQuestionIndex = 1);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    vertical: 16, horizontal: 40),
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: Text(
+                  "I'm Ready",
+                  style: GoogleFonts.sora(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final question = _questions[_currentQuestionIndex - 1];
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$player is in the hot seat 🔥',
+            style: TextStyle(
+                color: AppColors.tertiary, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                  color: AppColors.tertiary.withAlpha(80)),
+              boxShadow: [
+                BoxShadow(
+                    color: AppColors.tertiary.withAlpha(30),
+                    blurRadius: 30),
+              ],
+            ),
+            child: Text(
+              question,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.sora(
+                fontSize: 18,
+                color: Colors.white,
+                height: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Question $_currentQuestionIndex of 3',
+            style: TextStyle(color: Colors.white38),
+          ),
+          const SizedBox(height: 48),
+          GestureDetector(
+            onTap: () {
+              if (_currentQuestionIndex < 3) {
+                setState(() => _currentQuestionIndex++);
+              } else {
+                setState(() {
+                  _currentQuestionIndex = 0;
+                  _currentPlayerIndex++;
+                  if (_currentPlayerIndex >=
+                      _selectedPlayers.length) {
+                    _step = 5;
+                  }
+                });
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  vertical: 16, horizontal: 40),
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: Text(
+                _currentQuestionIndex < 3
+                    ? 'Next Question →'
+                    : _currentPlayerIndex <
+                            _selectedPlayers.length - 1
+                        ? 'Next Player →'
+                        : 'Vote →',
+                style: GoogleFonts.sora(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerdict() {
+    final remaining = _selectedPlayers
+        .where((p) => !_votes.containsKey(p))
+        .toList();
+    if (remaining.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _step = 6);
+      });
+      return const SizedBox.shrink();
+    }
+    final currentVoter = remaining.first;
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'VERDICT',
+            style: GoogleFonts.sora(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Does the alibi hold?',
+            style: TextStyle(color: Colors.white54),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${_votes.length} / ${_selectedPlayers.length} voted',
+            style: TextStyle(
+                color: AppColors.primary, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  '$currentVoter, cast your vote:',
+                  style: GoogleFonts.sora(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          setState(() {
+                            _votes[currentVoter] = true;
+                            if (_votes.length ==
+                                _selectedPlayers.length) {
+                              _confettiController.play();
+                              _step = 6;
+                            }
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 16),
+                          decoration: BoxDecoration(
+                            color:
+                                Colors.green.withAlpha(40),
+                            borderRadius:
+                                BorderRadius.circular(14),
+                            border: Border.all(
+                                color: Colors.green
+                                    .withAlpha(100)),
+                          ),
+                          child: const Column(
+                            children: [
+                              Text('🤝', style: TextStyle(fontSize: 28)),
+                              SizedBox(height: 4),
+                              Text(
+                                'Alibi Holds',
+                                style: TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          setState(() {
+                            _votes[currentVoter] = false;
+                            if (_votes.length ==
+                                _selectedPlayers.length) {
+                              _step = 6;
+                            }
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withAlpha(40),
+                            borderRadius:
+                                BorderRadius.circular(14),
+                            border: Border.all(
+                                color:
+                                    Colors.red.withAlpha(100)),
+                          ),
+                          child: const Column(
+                            children: [
+                              Text('💥', style: TextStyle(fontSize: 28)),
+                              SizedBox(height: 4),
+                              Text(
+                                'Story Breaks',
+                                style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResults() {
+    final holdsCount = _votes.values.where((v) => v).length;
+    final breaksCount = _votes.values.where((v) => !v).length;
+    final alibiHolds = holdsCount >= breaksCount;
+
+    SessionService.saveSession(SessionRecord(
+      id: const Uuid().v4(),
+      mode: 'Alibi',
+      playedAt: DateTime.now(),
+      players: _selectedPlayers,
+      winner: alibiHolds ? 'The Group' : 'Nobody',
+      themeColor: 'green',
+    ));
+
+    return Stack(
+      children: [
+        if (!alibiHolds)
+          Container(color: Colors.red.withAlpha(20)),
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                alibiHolds ? '🤝 ALIBI HOLDS!' : '💥 STORY BREAKS!',
+                style: GoogleFonts.sora(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                  color: alibiHolds ? Colors.green : Colors.red,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                alibiHolds
+                    ? '$holdsCount votes held the alibi'
+                    : '$breaksCount votes broke the story',
+                style: TextStyle(color: Colors.white54),
+              ),
+              const SizedBox(height: 32),
+              Expanded(
+                child: ListView(
+                  children: _votes.entries.map((e) {
+                    return ListTile(
+                      leading: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.primary.withAlpha(60),
+                        child: Text(e.key[0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white)),
+                      ),
+                      title: Text(
+                        e.key,
+                        style:
+                            const TextStyle(color: Colors.white),
+                      ),
+                      trailing: Text(
+                        e.value ? '🤝 Holds' : '💥 Breaks',
+                        style: TextStyle(
+                          color: e.value ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side:
+                            const BorderSide(color: Colors.white30),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => setState(() {
+                        _step = 1;
+                        _votes = {};
+                        _currentPlayerIndex = 0;
+                        _currentQuestionIndex = 0;
+                        _selectedPlayers = [];
+                        _selectedCategories = [];
+                      }),
+                      child: Text('Play Again',
+                          style: GoogleFonts.sora(
+                              color: Colors.white)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => Navigator.popUntil(
+                          context, (r) => r.isFirst),
+                      child: Text('Home',
+                          style: GoogleFonts.sora(
+                              color: Colors.white,
+                              fontWeight:
+                                  FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlanningTimer extends StatefulWidget {
+  final int seconds;
+  final VoidCallback onEnd;
+
+  const _PlanningTimer({required this.seconds, required this.onEnd});
+
+  @override
+  State<_PlanningTimer> createState() => _PlanningTimerState();
+}
+
+class _PlanningTimerState extends State<_PlanningTimer> {
+  late int _remaining;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _remaining = widget.seconds;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_remaining > 0) {
+        setState(() => _remaining--);
+      } else {
+        _timer?.cancel();
+        widget.onEnd();
       }
     });
   }
 
   @override
   void dispose() {
-    _prepTimer?.cancel();
+    _timer?.cancel();
     super.dispose();
-  }
-
-  bool get _soundEnabled => context.read<PreferencesService>().soundEnabled;
-  bool get _hapticsEnabled => context.read<PreferencesService>().hapticsEnabled;
-
-  void _startGame() {
-    _scores.clear();
-    for (final p in _players) _scores[p] = 0;
-    _currentPlayerIndex = 0;
-    _roundsPlayed = 0;
-    _pickQuestion();
-    setState(() => _phase = _AlibiPhase.crime);
-  }
-
-  void _pickQuestion() {
-    final questions = alibiQuestionsByCategory[_currentCategory]!;
-    _currentQuestion = questions[_rng.nextInt(questions.length)];
-  }
-
-  void _startPrep() {
-    SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
-    _prepSecondsLeft = 30;
-    setState(() => _phase = _AlibiPhase.prepTimer);
-    _prepTimer?.cancel();
-    _prepTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
-      setState(() {
-        _prepSecondsLeft--;
-        if (_prepSecondsLeft <= 5 && _prepSecondsLeft > 0) {
-          HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled);
-          SoundService.instance.play(SoundEvent.countdown, soundEnabled: _soundEnabled);
-        }
-        if (_prepSecondsLeft <= 0) {
-          t.cancel();
-          HapticService.instance.trigger(HapticEvent.playerEliminated, hapticsEnabled: _hapticsEnabled);
-          SoundService.instance.play(SoundEvent.timerEnd, soundEnabled: _soundEnabled);
-          _phase = _AlibiPhase.giveAlibi;
-        }
-      });
-    });
-  }
-
-  void _skipToAlibi() {
-    _prepTimer?.cancel();
-    SoundService.instance.play(SoundEvent.tap, soundEnabled: _soundEnabled);
-    setState(() => _phase = _AlibiPhase.giveAlibi);
-  }
-
-  void _nextPlayer() {
-    _roundsPlayed++;
-    final totalTurns = _roundsPerPlayer * _players.length;
-    SoundService.instance.play(SoundEvent.nextPlayer, soundEnabled: _soundEnabled);
-    if (_roundsPlayed >= totalTurns) {
-      setState(() => _phase = _AlibiPhase.vote);
-    } else {
-      _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
-      if (_currentPlayerIndex == 0) _pickQuestion();
-      setState(() => _phase = _AlibiPhase.crime);
-    }
-  }
-
-  void _vote(int index) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Vote for ${_players[index]}?', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Text('You think their alibi is weakest.', style: GoogleFonts.poppins(color: AppColors.textSecondary)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.poppins(color: AppColors.textSecondary))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Vote', style: GoogleFonts.poppins(color: AppColors.dareRed, fontWeight: FontWeight.w700))),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) {
-      _votedPlayerId = _players[index];
-      final survivors = _players.where((p) => p != _votedPlayerId).toList();
-      for (final p in survivors) { _scores[p] = (_scores[p] ?? 0) + 1; }
-      SoundService.instance.play(SoundEvent.win, soundEnabled: _soundEnabled);
-      setState(() => _phase = _AlibiPhase.verdict);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: _phase == _AlibiPhase.setup,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        if (_phase == _AlibiPhase.setup) return;
-        final leave = await showLeaveGameDialog(context);
-        if (leave == true && context.mounted) Navigator.pop(context);
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(child: _body()),
-      ),
+    final isLow = _remaining <= 10;
+    return Column(
+      children: [
+        SizedBox(
+          width: 120,
+          height: 120,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CircularProgressIndicator(
+                value: _remaining / widget.seconds,
+                strokeWidth: 8,
+                strokeCap: StrokeCap.round,
+                color: isLow ? AppColors.dareRed : AppColors.primary,
+                backgroundColor: AppColors.surfaceBright,
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$_remaining',
+                    style: GoogleFonts.sora(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: isLow ? AppColors.dareRed : Colors.white,
+                    ),
+                  ),
+                  Text(
+                    'sec',
+                    style: TextStyle(
+                        color: Colors.white38, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          isLow ? 'Wrap it up!' : 'Sync your alibis...',
+          style: TextStyle(
+            color: isLow ? AppColors.dareRed : Colors.white54,
+            fontSize: 14,
+          ),
+        ),
+      ],
     );
   }
-
-  Widget _body() {
-    switch (_phase) {
-      case _AlibiPhase.setup: return _setup();
-      case _AlibiPhase.crime: return _crimeView();
-      case _AlibiPhase.prepTimer: return _prepView();
-      case _AlibiPhase.giveAlibi: return _alibiView();
-      case _AlibiPhase.vote: return _voteView();
-      case _AlibiPhase.verdict: return _verdictView();
-    }
-  }
-
-  Widget _setup() {
-    final cats = alibiQuestionsByCategory.keys.toList();
-    return Column(children: [
-      _appBar(),
-      Expanded(child: ListView(padding: const EdgeInsets.symmetric(horizontal: 24), children: [
-        _playerHeader(),
-        const SizedBox(height: 10),
-        ..._players.asMap().entries.map((e) => _playerRow(e.key)),
-        const SizedBox(height: 16),
-        Text('Crime Category', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        ...cats.map((c) => GestureDetector(
-          onTap: () => setState(() => _currentCategory = c),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: _currentCategory == c ? AppColors.neonPink.withAlpha(25) : AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _currentCategory == c ? AppColors.neonPink : AppColors.surfaceBright),
-            ),
-            child: Row(children: [
-              Expanded(child: Text(c, style: GoogleFonts.poppins(color: _currentCategory == c ? AppColors.neonPink : Colors.white, fontSize: 14, fontWeight: FontWeight.w600))),
-              if (_currentCategory == c) const Icon(Icons.check_rounded, color: AppColors.neonPink, size: 18),
-            ]),
-          ),
-        )),
-        const SizedBox(height: 16),
-        Row(children: [
-          Expanded(child: Text('Rounds each', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 15))),
-          _iconBtn(Icons.remove_rounded, _roundsPerPlayer <= 1 ? null : () => setState(() => _roundsPerPlayer--), AppColors.textMuted),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text('$_roundsPerPlayer', style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800))),
-          _iconBtn(Icons.add_rounded, _roundsPerPlayer >= 5 ? null : () => setState(() => _roundsPerPlayer++), AppColors.neonGreen),
-        ]),
-      ])),
-      Padding(padding: const EdgeInsets.all(24), child: SizedBox(width: double.infinity, child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: AppColors.neonPink, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-        onPressed: _startGame,
-        child: Text('START ALIBI', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-      ))),
-    ]);
-  }
-
-  Widget _crimeView() {
-    final player = _players[_currentPlayerIndex];
-    return Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Text('$_currentCategory', style: GoogleFonts.poppins(color: AppColors.neonPink, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 1)),
-      const SizedBox(height: 24),
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.neonPink.withAlpha(80), width: 2)),
-        child: Text(_currentQuestion, style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, height: 1.6), textAlign: TextAlign.center),
-      ),
-      const SizedBox(height: 32),
-      Text('Pass to:', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 16)),
-      const SizedBox(height: 8),
-      Text(player, style: GoogleFonts.poppins(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
-      const Spacer(),
-      SizedBox(width: double.infinity, child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: AppColors.neonPink, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-        onPressed: _startPrep,
-        child: Text('START 30s PREP', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-      )),
-    ]));
-  }
-
-  Widget _prepView() {
-    final timerColor = _prepSecondsLeft <= 5 ? AppColors.dareRed : (_prepSecondsLeft <= 10 ? AppColors.neonOrange : Colors.white);
-    return Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Text('PREPARE YOUR ALIBI', style: GoogleFonts.poppins(color: AppColors.neonPink, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1)),
-      const SizedBox(height: 8),
-      Text(_players[_currentPlayerIndex], style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 16)),
-      const SizedBox(height: 48),
-      Text('$_prepSecondsLeft', style: GoogleFonts.poppins(color: timerColor, fontSize: 96, fontWeight: FontWeight.w900)),
-      Text('seconds', style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 14)),
-      const SizedBox(height: 64),
-      SizedBox(width: double.infinity, child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: AppColors.surfaceLight, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-        onPressed: _skipToAlibi,
-        child: Text('SKIP TIMER', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 15)),
-      )),
-    ]));
-  }
-
-  Widget _alibiView() => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    const Icon(Icons.mic_rounded, size: 80, color: AppColors.neonPink),
-    const SizedBox(height: 24),
-    Text(_players[_currentPlayerIndex], style: GoogleFonts.poppins(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 8),
-    Text('Give your alibi now!', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 16)),
-    const SizedBox(height: 12),
-    Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(20)),
-      child: Text(_currentQuestion, style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 14, height: 1.5), textAlign: TextAlign.center),
-    ),
-    const Spacer(),
-    SizedBox(width: double.infinity, child: ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: AppColors.neonPink, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-      onPressed: _nextPlayer,
-      child: Text('DONE — NEXT', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-    )),
-  ]));
-
-  Widget _voteView() => Column(children: [
-    Padding(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('WHO HAD THE WORST ALIBI?', style: GoogleFonts.poppins(color: AppColors.dareRed, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-      Text('All vote together', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14)),
-    ])),
-    Expanded(child: ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      itemCount: _players.length,
-      itemBuilder: (_, i) => GestureDetector(
-        onTap: () => _vote(i),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.dareRed.withAlpha(60))),
-          child: Row(children: [
-            Container(width: 36, height: 36, decoration: BoxDecoration(color: AppColors.dareRed.withAlpha(40), borderRadius: BorderRadius.circular(10)), alignment: Alignment.center, child: Text('${i + 1}', style: GoogleFonts.poppins(color: AppColors.dareRed, fontWeight: FontWeight.w800))),
-            const SizedBox(width: 16),
-            Expanded(child: Text(_players[i], style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700))),
-            const Icon(Icons.gavel_rounded, color: AppColors.dareRed, size: 20),
-          ]),
-        ),
-      ),
-    )),
-  ]);
-
-  Widget _verdictView() {
-    final sorted = _players.toList()..sort((a, b) => (_scores[b] ?? 0).compareTo(_scores[a] ?? 0));
-    return Padding(padding: const EdgeInsets.all(24), child: Column(children: [
-      const SizedBox(height: 24),
-      const Icon(Icons.gavel_rounded, size: 80, color: AppColors.dareRed),
-      const SizedBox(height: 16),
-      Text('$_votedPlayerId had the worst alibi!', style: GoogleFonts.poppins(color: AppColors.dareRed, fontSize: 20, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
-      const SizedBox(height: 32),
-      Text('Scores', style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14)),
-      const SizedBox(height: 12),
-      Expanded(child: ListView.builder(itemCount: sorted.length, itemBuilder: (_, i) {
-        final p = sorted[i];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.surfaceBright)),
-          child: Row(children: [
-            Expanded(child: Text(p, style: GoogleFonts.poppins(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700))),
-            Text('${_scores[p] ?? 0} pts', style: GoogleFonts.poppins(color: AppColors.neonGreen, fontSize: 15, fontWeight: FontWeight.w800)),
-          ]),
-        );
-      })),
-      Row(children: [
-        Expanded(child: OutlinedButton(style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.surfaceBright), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), onPressed: () => Navigator.pop(context), child: Text('Leave', style: GoogleFonts.poppins(color: AppColors.textSecondary)))),
-        const SizedBox(width: 12),
-        Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppColors.neonPink, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), onPressed: _startGame, child: Text('PLAY AGAIN', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w800)))),
-      ]),
-    ]));
-  }
-
-  Widget _appBar() => Padding(padding: const EdgeInsets.all(24), child: Row(children: [
-    GestureDetector(onTap: () => Navigator.pop(context), child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.surfaceBright)), child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18))),
-    const SizedBox(width: 16),
-    Text('ALIBI', style: GoogleFonts.poppins(color: AppColors.neonPink, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 1)),
-  ]));
-
-  Widget _playerHeader() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-    Text('${_players.length} players', style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-    Row(children: [
-      _iconBtn(Icons.remove_rounded, _players.length <= 2 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() => _players.removeLast()); }, AppColors.dareRed),
-      const SizedBox(width: 10),
-      _iconBtn(Icons.add_rounded, _players.length >= 12 ? null : () { HapticService.instance.trigger(HapticEvent.tap, hapticsEnabled: _hapticsEnabled); setState(() { _players.add('Player $_nextId'); _nextId++; }); }, AppColors.neonGreen),
-    ]),
-  ]);
-
-  Widget _playerRow(int i) => Container(
-    margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.surfaceBright)),
-    child: Row(children: [
-      Text('${i + 1}', style: GoogleFonts.poppins(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w700)),
-      const SizedBox(width: 12),
-      Expanded(child: TextFormField(initialValue: _players[i], style: GoogleFonts.poppins(color: Colors.white, fontSize: 15), decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true), onChanged: (v) => _players[i] = v)),
-    ]),
-  );
-
-  Widget _iconBtn(IconData icon, VoidCallback? onTap, Color color) => GestureDetector(
-    onTap: onTap,
-    child: Container(width: 36, height: 36, decoration: BoxDecoration(color: onTap != null ? color.withAlpha(30) : AppColors.surfaceLight.withAlpha(100), borderRadius: BorderRadius.circular(10), border: Border.all(color: onTap != null ? color.withAlpha(80) : AppColors.surfaceBright)), child: Icon(icon, color: onTap != null ? color : AppColors.textMuted, size: 18)),
-  );
 }

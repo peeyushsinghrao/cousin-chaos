@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -48,7 +49,7 @@ class _CreatePackScreenState extends State<CreatePackScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text('Create Pack', style: GoogleFonts.sora(color: Colors.white, fontWeight: FontWeight.w800)),

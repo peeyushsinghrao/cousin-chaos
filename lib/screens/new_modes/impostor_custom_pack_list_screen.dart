@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,7 +34,7 @@ class ImpostorCustomPackListScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -48,7 +49,7 @@ class ImpostorCustomPackListScreen extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
+            icon: const Icon(LucideIcons.plus, color: Colors.white),
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -145,7 +146,7 @@ class ImpostorCustomPackListScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.neonPink,
-        child: const Icon(Icons.add),
+        child: const Icon(LucideIcons.plus),
         onPressed: () async {
           await Navigator.push(
             context,

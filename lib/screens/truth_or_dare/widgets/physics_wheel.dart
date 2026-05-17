@@ -1,9 +1,10 @@
 import 'dart:math';
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../services/sound_service.dart';
 
 class PhysicsWheel extends StatefulWidget {
   final List<String> items;
@@ -28,6 +29,7 @@ class PhysicsWheelState extends State<PhysicsWheel> with SingleTickerProviderSta
   double _angle = 0;
   int _lastTickSlice = -1;
   bool _isSpinning = false;
+  final _random = Random();
 
   final List<Color> _defaultColors = [
     AppColors.primaryNeon,
@@ -47,23 +49,14 @@ class PhysicsWheelState extends State<PhysicsWheel> with SingleTickerProviderSta
     super.initState();
     _controller = AnimationController.unbounded(vsync: this);
     _controller.addListener(_onTick);
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
-        if (_isSpinning) {
-          _isSpinning = false;
-          _calculateWinner();
-        }
-      }
-    });
   }
 
   void _onTick() {
     setState(() {
       _angle = _controller.value;
     });
-    // Haptic tick when crossing a slice boundary
     final sliceAngle = 2 * pi / widget.items.length;
-    int currentSlice = (_angle / sliceAngle).floor();
+    final currentSlice = (_angle / sliceAngle).floor();
     if (currentSlice != _lastTickSlice) {
       _lastTickSlice = currentSlice;
       HapticFeedback.selectionClick();
@@ -72,69 +65,36 @@ class PhysicsWheelState extends State<PhysicsWheel> with SingleTickerProviderSta
 
   void _calculateWinner() {
     if (widget.items.isEmpty) return;
-
     double normalizedAngle = _angle % (2 * pi);
     if (normalizedAngle < 0) normalizedAngle += 2 * pi;
-
     final sliceAngle = 2 * pi / widget.items.length;
-    // Pointer is at top center (the arrow). We adjust from the -pi/2 offset used in painting.
-    final adjustedAngle = (2 * pi - normalizedAngle + sliceAngle / 2) % (2 * pi);
-    int winnerIndex = (adjustedAngle / sliceAngle).floor() % widget.items.length;
-
+    final adjustedAngle =
+        (2 * pi - normalizedAngle + sliceAngle / 2) % (2 * pi);
+    final winnerIndex = (adjustedAngle / sliceAngle).floor() % widget.items.length;
     HapticFeedback.heavyImpact();
+    SoundService.instance.play(SoundEvent.wheelLand, soundEnabled: true);
     widget.onSpinComplete(winnerIndex);
   }
 
-  void _onPanUpdate(DragUpdateDetails details) {
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final size = renderBox.size;
-    final center = Offset(size.width / 2, size.height / 2);
-    final position = details.localPosition;
-    final delta = details.delta;
-
-    final touchVector = position - center;
-    final angularDelta = (touchVector.dx * delta.dy - touchVector.dy * delta.dx) /
-        touchVector.distanceSquared;
-
-    _controller.value += angularDelta;
-  }
-
-  void _onPanEnd(DragEndDetails details) {
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final size = renderBox.size;
-
-    double velocity = 0;
-    if (details.velocity.pixelsPerSecond != Offset.zero) {
-      // Estimate angular velocity from linear velocity
-      final radius = size.width / 2;
-      final linearSpeed = details.velocity.pixelsPerSecond.distance;
-      velocity = linearSpeed / radius;
-      
-      // Determine direction based on cross product
-      final touchVector = Offset(0, -radius); // approximate at top
-      final linearVelocity = details.velocity.pixelsPerSecond;
-      final cross = touchVector.dx * linearVelocity.dy - touchVector.dy * linearVelocity.dx;
-      if (cross < 0) velocity = -velocity;
-    }
-
-    if (velocity.abs() < 1.5) {
-      // Too slow, no spin
-      return;
-    }
-
-    _isSpinning = true;
-
-    // Add more rotations for dramatic effect
-    final extraRotations = 3 + Random().nextInt(3); // 3-5 extra full spins
-    final totalVelocity = velocity + (extraRotations * 2 * pi * velocity.sign);
-
-    final simulation = FrictionSimulation(
-      0.15, // drag coefficient
-      _angle,
-      totalVelocity,
-    );
-
-    _controller.animateWith(simulation);
+  void triggerSpin() {
+    if (_isSpinning) return;
+    final extraSpins = 5 + _random.nextInt(3);
+    final offset = _random.nextDouble() * 2 * pi;
+    final targetAngle = _angle + extraSpins * 2 * pi + offset;
+    setState(() => _isSpinning = true);
+    SoundService.instance.play(SoundEvent.wheelSpin, soundEnabled: true);
+    _controller
+        .animateTo(
+          targetAngle,
+          duration: const Duration(milliseconds: 3500),
+          curve: Curves.decelerate,
+        )
+        .then((_) {
+      if (mounted) {
+        setState(() => _isSpinning = false);
+        _calculateWinner();
+      }
+    });
   }
 
   @override
@@ -146,74 +106,117 @@ class PhysicsWheelState extends State<PhysicsWheel> with SingleTickerProviderSta
   @override
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return const SizedBox.shrink();
-
     final wheelSize = widget.size;
 
-    return SizedBox(
-      width: wheelSize + 40,
-      height: wheelSize + 60,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Outer glow ring
-          Container(
-            width: wheelSize + 30,
-            height: wheelSize + 30,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryNeon.withAlpha(40),
-                  blurRadius: 40,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-          ),
-          // Wheel
-          GestureDetector(
-            onPanUpdate: _isSpinning ? null : _onPanUpdate,
-            onPanEnd: _isSpinning ? null : _onPanEnd,
-            child: Transform.rotate(
-              angle: _angle,
-              child: CustomPaint(
-                size: Size(wheelSize, wheelSize),
-                painter: _WheelPainter(
-                  items: widget.items,
-                  colors: widget.sliceColors ?? _defaultColors,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: wheelSize + 40,
+          height: wheelSize + 40,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: wheelSize + 30,
+                height: wheelSize + 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryNeon.withAlpha(40),
+                      blurRadius: 40,
+                      spreadRadius: 5,
+                    ),
+                  ],
                 ),
               ),
-            ),
+              Transform.rotate(
+                angle: _angle,
+                child: CustomPaint(
+                  size: Size(wheelSize, wheelSize),
+                  painter: _WheelPainter(
+                    items: widget.items,
+                    colors: widget.sliceColors ?? _defaultColors,
+                  ),
+                ),
+              ),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.background,
+                  border: Border.all(
+                      color: AppColors.surfaceBright, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(120),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(Icons.touch_app_rounded,
+                      color: AppColors.textMuted, size: 18),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                child: CustomPaint(
+                  size: const Size(32, 28),
+                  painter: _PointerPainter(),
+                ),
+              ),
+            ],
           ),
-          // Center hub
-          Container(
-            width: 44,
-            height: 44,
+        ),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: _isSpinning ? null : triggerSpin,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.background,
-              border: Border.all(color: AppColors.surfaceBright, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(120),
-                  blurRadius: 10,
+              gradient: _isSpinning
+                  ? LinearGradient(
+                      colors: [Colors.grey.shade700, Colors.grey.shade800])
+                  : AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(50),
+              boxShadow: _isSpinning
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: AppColors.primary.withAlpha(100),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _isSpinning ? LucideIcons.loader : LucideIcons.zap,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _isSpinning ? 'SPINNING...' : 'SPIN',
+                  style: GoogleFonts.sora(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 2,
+                  ),
                 ),
               ],
             ),
-            child: const Center(
-              child: Icon(Icons.touch_app_rounded, color: AppColors.textMuted, size: 18),
-            ),
           ),
-          // Pointer arrow at top
-          Positioned(
-            top: 0,
-            child: CustomPaint(
-              size: const Size(32, 28),
-              painter: _PointerPainter(),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -236,7 +239,6 @@ class _WheelPainter extends CustomPainter {
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
-    // Outer ring
     canvas.drawCircle(
       center,
       radius,
@@ -247,10 +249,7 @@ class _WheelPainter extends CustomPainter {
     );
 
     for (int i = 0; i < items.length; i++) {
-      // Alternate between bright and slightly dimmer versions
-      final baseColor = colors[i % colors.length];
-      paint.color = baseColor;
-
+      paint.color = colors[i % colors.length];
       final startAngle = i * sliceAngle - pi / 2;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius - 3),
@@ -259,7 +258,6 @@ class _WheelPainter extends CustomPainter {
         true,
         paint,
       );
-
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius - 3),
         startAngle,
@@ -268,7 +266,6 @@ class _WheelPainter extends CustomPainter {
         borderPaint,
       );
 
-      // Draw text
       canvas.save();
       canvas.translate(center.dx, center.dy);
       canvas.rotate(startAngle + sliceAngle / 2);
@@ -304,9 +301,8 @@ class _WheelPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _WheelPainter oldDelegate) {
-    return oldDelegate.items != items;
-  }
+  bool shouldRepaint(covariant _WheelPainter oldDelegate) =>
+      oldDelegate.items != items;
 }
 
 class _PointerPainter extends CustomPainter {
@@ -317,13 +313,6 @@ class _PointerPainter extends CustomPainter {
       ..lineTo(0, 0)
       ..lineTo(size.width, 0)
       ..close();
-
-    canvas.drawPath(
-      path,
-      Paint()..color = Colors.white,
-    );
-
-    // Shadow
     canvas.drawPath(
       path,
       Paint()

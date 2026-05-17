@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -120,7 +121,7 @@ class PackSelectionScreen extends StatelessWidget {
                 color: AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+              child: const Icon(LucideIcons.arrowLeft, color: Colors.white, size: 18),
             ),
           ),
           const Spacer(),

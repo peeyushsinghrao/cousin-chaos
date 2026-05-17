@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/animations.dart';
@@ -154,7 +155,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
           Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(LucideIcons.arrowLeft),
                 color: AppColors.primary,
                 onPressed: () => Navigator.pop(context),
               ),
@@ -188,7 +189,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
               child: Container(
                 color: AppColors.surfaceContainer,
                 child: const Icon(
-                  Icons.person,
+                  LucideIcons.user,
                   color: AppColors.primary,
                 ),
               ),
@@ -315,7 +316,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
         _buildModeCard(
           title: 'Speed Run',
           description: 'Rapid-fire challenges that get harder as the clock ticks down. Fastest reflexes win the crown.',
-          icon: Icons.timer,
+          icon: LucideIcons.timer,
           iconColor: AppColors.secondary,
           tagColor: AppColors.secondary,
           tag: 'Intense',
@@ -492,13 +493,13 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(
-                  icon: Icons.sports_esports,
+                  icon: LucideIcons.gamepad2,
                   label: 'Chaos',
                   isSelected: true,
                   onTap: () {},
                 ),
                 _buildNavItem(
-                  icon: Icons.group,
+                  icon: LucideIcons.users,
                   label: 'Crew',
                   isSelected: false,
                   onTap: () {},
@@ -510,7 +511,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                   onTap: () {},
                 ),
                 _buildNavItem(
-                  icon: Icons.settings,
+                  icon: LucideIcons.settings,
                   label: 'Settings',
                   isSelected: false,
                   onTap: () {},

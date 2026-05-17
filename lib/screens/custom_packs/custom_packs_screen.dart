@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -66,7 +67,7 @@ class CustomPacksScreen extends StatelessWidget {
                                 const Spacer(),
                                 Row(
                                   children: [
-                                    const Icon(Icons.star_border, color: AppColors.secondary, size: 18),
+                                    const Icon(LucideIcons.star, color: AppColors.secondary, size: 18),
                                     const SizedBox(width: 8),
                                     Text('Custom', style: GoogleFonts.plusJakartaSans(color: AppColors.secondary)),
                                   ],

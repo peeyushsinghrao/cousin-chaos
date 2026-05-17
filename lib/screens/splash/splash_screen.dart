@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
@@ -149,7 +150,7 @@ class _SplashScreenState extends State<SplashScreen>
       padding: const EdgeInsets.all(40),
       borderRadius: 40,
       child: Icon(
-        Icons.sports_esports,
+        LucideIcons.gamepad2,
         size: 80,
         color: AppColors.primary,
         shadows: [

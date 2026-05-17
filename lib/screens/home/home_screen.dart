@@ -1,19 +1,41 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/animations.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../services/player_manager.dart';
+import '../../services/session_service.dart';
 import '../truth_or_dare/pack_selection_screen.dart';
 import '../settings/settings_screen.dart';
 import '../new_modes/act_it_out_screen.dart';
 import '../new_modes/alibi_screen.dart';
 import '../new_modes/impostor_players_screen.dart';
-import '../new_modes/last_standing_screen.dart';
 import '../new_modes/speed_challenge_screen.dart';
 import '../new_modes/two_truths_one_lie_screen.dart';
 import '../../core/navigation/page_transitions.dart';
+import '../../services/preferences_service.dart';
+import '../../services/sound_service.dart';
 import '../../widgets/disclaimer_dialog.dart';
 import '../players/players_screen.dart';
+
+class _ModeData {
+  final String name;
+  final String tagline;
+  final IconData icon;
+  final Color color;
+  final Widget Function(BuildContext) builder;
+
+  const _ModeData({
+    required this.name,
+    required this.tagline,
+    required this.icon,
+    required this.color,
+    required this.builder,
+  });
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,6 +46,77 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  List<SessionRecord>? _recentSessions;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSessions();
+  }
+
+  Future<void> _loadSessions() async {
+    final sessions = await SessionService.loadSessions();
+    if (mounted) setState(() => _recentSessions = sessions);
+  }
+
+  List<_ModeData> _getModes(BuildContext context) => [
+        _ModeData(
+          name: 'Truth or Dare',
+          tagline: 'Dare to speak?',
+          icon: Icons.psychology_rounded,
+          color: AppColors.primary,
+          builder: (_) => throw '',
+        ),
+        _ModeData(
+          name: 'Impostor',
+          tagline: 'Find the traitor',
+          icon: Icons.person_search_rounded,
+          color: AppColors.tertiary,
+          builder: (_) => const ImpostorPlayersScreen(),
+        ),
+        _ModeData(
+          name: 'Act It Out',
+          tagline: 'Charades with chaos',
+          icon: Icons.theater_comedy_rounded,
+          color: AppColors.secondary,
+          builder: (_) => const ActItOutScreen(),
+        ),
+        _ModeData(
+          name: 'Two Truths',
+          tagline: 'Find the lie',
+          icon: Icons.sentiment_satisfied_alt_rounded,
+          color: const Color(0xFF93C5FD),
+          builder: (_) => const TwoTruthsOneLieScreen(),
+        ),
+        _ModeData(
+          name: 'Alibi',
+          tagline: 'Defend your story',
+          icon: Icons.verified_user_rounded,
+          color: AppColors.neonGreen,
+          builder: (_) => const AlibiScreen(),
+        ),
+        _ModeData(
+          name: 'Speed Challenge',
+          tagline: 'Answers under pressure',
+          icon: Icons.speed_rounded,
+          color: AppColors.error,
+          builder: (_) => const SpeedChallengeScreen(),
+        ),
+        _ModeData(
+          name: 'Would You Rather',
+          tagline: 'Tough choices ahead',
+          icon: Icons.compare_arrows_rounded,
+          color: AppColors.neonYellow,
+          builder: (_) => const SpeedChallengeScreen(),
+        ),
+        _ModeData(
+          name: 'Never Have I Ever',
+          tagline: 'Confess your secrets',
+          icon: Icons.ramen_dining_rounded,
+          color: AppColors.neonOrange,
+          builder: (_) => const SpeedChallengeScreen(),
+        ),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -41,18 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: IndexedStack(
                       index: _currentIndex,
                       children: [
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Column(
-                            children: [
-                              const SizedBox(height: 24),
-                              _buildWelcomeSection(),
-                              const SizedBox(height: 32),
-                              _buildGameModeGrid(),
-                              const SizedBox(height: 120),
-                            ],
-                          ),
-                        ),
+                        _buildChaosTab(),
                         const PlayersScreen(),
                         const SettingsScreen(),
                       ],
@@ -64,6 +146,25 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildBottomNavBar(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildChaosTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          const SizedBox(height: 24),
+          _buildWelcomeSection(),
+          const SizedBox(height: 32),
+          _buildGameModeGrid(),
+          if (_recentSessions != null && _recentSessions!.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildLastPlayedCard(_recentSessions!.first),
+          ],
+          const SizedBox(height: 120),
+        ],
       ),
     );
   }
@@ -119,10 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface.withAlpha(76),
         border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withAlpha(26),
-            width: 1,
-          ),
+          bottom: BorderSide(color: Colors.white.withAlpha(26)),
         ),
       ),
       child: Row(
@@ -154,7 +252,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.borderGlass),
               ),
-              child: Icon(Icons.settings_rounded, color: AppColors.primary, size: 20),
+              child: Icon(LucideIcons.settings,
+                  color: AppColors.primary, size: 20),
             ),
           ),
         ],
@@ -165,259 +264,205 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildWelcomeSection() {
     return FadeInUpAnimation(
       duration: const Duration(milliseconds: 600),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome to the Chaos',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: AppColors.onSurface,
-              fontSize: 28,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Ready to wreck the party? Pick your poison and let the games begin.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.onSurfaceVariant,
-            ),
-          ),
-        ],
+      child: Consumer<PlayerManager>(
+        builder: (context, pm, _) {
+          final firstName = pm.players.isNotEmpty
+              ? pm.players.first.name.split(' ').first
+              : null;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                firstName != null
+                    ? 'Hey $firstName 👋'
+                    : 'Welcome to the Chaos',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: AppColors.onSurface,
+                  fontSize: 28,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Ready to wreck the party? Pick your poison.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildGameModeGrid() {
-    return Column(
-      children: [
-        _buildLargeModeCard(
-          title: 'Truth or Dare',
-          subtitle: 'Dare to speak?',
-          tag: 'Classic Mode',
-          tagColor: AppColors.primary,
-          icon: Icons.psychology,
-          color: AppColors.primary,
-          onTap: () {
-            DisclaimerDialog.show(context, () {
-              Navigator.push(context, slideUpRoute(const PackSelectionScreen()));
-            });
-          },
-        ),
-        const SizedBox(height: 24),
-        _buildLargeModeCard(
-          title: 'Impostor',
-          subtitle: 'Find the traitor',
-          tag: 'Trending',
-          tagColor: AppColors.tertiary,
-          icon: Icons.person_search,
-          color: AppColors.tertiary,
-          onTap: () {
-            Navigator.push(context, slideUpRoute(const ImpostorPlayersScreen()));
-          },
-        ),
-        const SizedBox(height: 24),
-        _buildHorizontalScrollModes(),
-      ],
+    final modes = _getModes(context);
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.0,
+      ),
+      itemCount: modes.length,
+      itemBuilder: (context, index) =>
+          _buildModeCard(context, modes[index], index),
     );
   }
 
-  Widget _buildLargeModeCard({
-    required String title,
-    required String subtitle,
-    required String tag,
-    required Color tagColor,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildModeCard(
+      BuildContext context, _ModeData mode, int index) {
     return FadeInUpAnimation(
-      duration: const Duration(milliseconds: 600),
+      duration: Duration(milliseconds: 400 + index * 60),
       child: GestureDetector(
-        onTap: onTap,
-        child: GlassCard(
-          borderRadius: 16,
-          padding: EdgeInsets.zero,
-          boxShadow: [
-            BoxShadow(
-              color: color.withAlpha(102),
-              blurRadius: 50,
-              spreadRadius: -12,
-              offset: const Offset(0, 20),
-            ),
-          ],
-          child: Container(
-            height: 192,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  color.withAlpha(26),
-                  Colors.transparent,
-                  AppColors.surface.withAlpha(204),
-                ],
+        onTap: () => _onModeTap(context, mode),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainer,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: mode.color.withAlpha(60), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: mode.color.withAlpha(30),
+                blurRadius: 20,
+                spreadRadius: -4,
+                offset: const Offset(0, 8),
               ),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: GlassCard(
-                    borderRadius: 20,
-                    padding: const EdgeInsets.all(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withAlpha(102),
-                        blurRadius: 20,
-                      ),
-                    ],
-                    child: Icon(icon, color: color, size: 24),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: -20,
+                right: -20,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: mode.color.withAlpha(20),
                   ),
                 ),
-                Positioned(
-                  bottom: 16,
-                  left: 16,
-                  right: 16,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withAlpha(51),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: color.withAlpha(76), width: 1),
-                        ),
-                        child: Text(
-                          tag,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: color,
-                            letterSpacing: 1,
-                          ),
-                        ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: mode.color.withAlpha(40),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
-                          fontSize: 24,
-                        ),
+                      child: Icon(mode.icon,
+                          color: mode.color, size: 22),
+                    ),
+                    const Spacer(),
+                    Text(
+                      mode.name,
+                      style: GoogleFonts.sora(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      mode.tagline,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: mode.color,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ],
-                  ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHorizontalScrollModes() {
-    final modes = [
-      {'title': 'Act It Out', 'subtitle': 'Charades with a twist', 'icon': Icons.theater_comedy, 'color': AppColors.secondary, 'route': const ActItOutScreen()},
-      {'title': 'Speed Challenge', 'subtitle': 'Answers under pressure', 'icon': Icons.speed, 'color': AppColors.error, 'route': const SpeedChallengeScreen()},
-      {'title': 'Last Standing', 'subtitle': 'Survive the round', 'icon': Icons.emoji_events, 'color': AppColors.gold, 'route': const LastStandingScreen()},
-      {'title': 'Alibi', 'subtitle': 'Defend your story', 'icon': Icons.verified_user, 'color': AppColors.secondary, 'route': const AlibiScreen()},
-      {'title': 'Two Truths', 'subtitle': 'Find the lie', 'icon': Icons.sentiment_satisfied_alt, 'color': AppColors.surfaceContainerHigh, 'route': const TwoTruthsOneLieScreen()},
-    ];
+  void _onModeTap(BuildContext context, _ModeData mode) {
+    final soundEnabled =
+        context.read<PreferencesService>().soundEnabled;
+    SoundService.instance
+        .play(SoundEvent.pageTransition, soundEnabled: soundEnabled);
 
-    return SizedBox(
-      height: 190,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: modes.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 16),
-        itemBuilder: (context, index) {
-          final mode = modes[index];
-          return SizedBox(
-            width: 250,
-            child: GestureDetector(
-              onTap: () => Navigator.push(context, slideUpRoute(mode['route'] as Widget)),
-              child: GlassCard(
-                borderRadius: 18,
-                padding: EdgeInsets.zero,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainer,
-                    borderRadius: BorderRadius.circular(18),
+    if (mode.name == 'Truth or Dare') {
+      DisclaimerDialog.show(context, () {
+        Navigator.push(
+            context, slideUpRoute(const PackSelectionScreen()));
+      });
+      return;
+    }
+    Navigator.push(context, slideUpRoute(mode.builder(context)));
+  }
+
+  Widget _buildLastPlayedCard(SessionRecord session) {
+    return FadeInUpAnimation(
+      duration: const Duration(milliseconds: 500),
+      child: GlassCard(
+        borderRadius: 16,
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(40),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(LucideIcons.history,
+                  color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Last Played',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              (mode['color'] as Color).withAlpha(64),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              top: 12,
-                              right: 12,
-                              child: GlassCard(
-                                borderRadius: 16,
-                                padding: const EdgeInsets.all(10),
-                                child: Icon(
-                                  mode['icon'] as IconData,
-                                  color: mode['color'] as Color,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              mode['title'] as String,
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Colors.white,
-                                fontSize: 19,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              mode['subtitle'] as String,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: mode['color'] as Color,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  Text(
+                    session.mode,
+                    style: GoogleFonts.sora(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
-                ),
+                  if (session.winner.isNotEmpty)
+                    Text(
+                      '🏆 ${session.winner} won',
+                      style: TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
               ),
             ),
-          );
-        },
+            Icon(LucideIcons.arrowRight,
+                color: Colors.white30, size: 18),
+          ],
+        ),
       ),
     );
   }
@@ -433,17 +478,19 @@ class _HomeScreenState extends State<HomeScreen> {
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: Colors.white.withAlpha(20),
               borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+              border:
+                  Border.all(color: Colors.white.withAlpha(38)),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(0, Icons.bolt, 'Chaos'),
-                _buildNavItem(1, Icons.group, 'Players'),
-                _buildNavItem(2, Icons.settings_rounded, 'Settings'),
+                _buildNavItem(0, LucideIcons.zap, 'Chaos'),
+                _buildNavItem(1, LucideIcons.users, 'Players'),
+                _buildNavItem(2, LucideIcons.settings, 'Settings'),
               ],
             ),
           ),
@@ -461,9 +508,11 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           ShaderMask(
             shaderCallback: (bounds) => isActive
-                ? LinearGradient(colors: [AppColors.primary, AppColors.secondary])
+                ? LinearGradient(
+                        colors: [AppColors.primary, AppColors.secondary])
                     .createShader(bounds)
-                : const LinearGradient(colors: [Colors.white54, Colors.white54])
+                : const LinearGradient(
+                        colors: [Colors.white54, Colors.white54])
                     .createShader(bounds),
             child: Icon(icon, size: 24, color: Colors.white),
           ),
@@ -473,7 +522,8 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               color: isActive ? AppColors.primary : Colors.white54,
               fontSize: 11,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+              fontWeight:
+                  isActive ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
         ],

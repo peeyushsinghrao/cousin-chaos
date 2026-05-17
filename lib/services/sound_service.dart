@@ -2,15 +2,22 @@ import 'package:audioplayers/audioplayers.dart';
 
 enum SoundEvent {
   tap,
+  cardFlip,
   cardReveal,
-  countdown,
-  timerEnd,
-  explosion,
+  wheelSpin,
+  wheelLand,
+  wheelTick,
+  nextPlayer,
   win,
   wrong,
-  freeze,
-  nextPlayer,
+  timerTick,
+  timerEnd,
+  pageTransition,
+  xpGain,
+  countdown,
   bombTick,
+  freeze,
+  explosion,
 }
 
 class SoundService {
@@ -21,15 +28,22 @@ class SoundService {
 
   static const Map<SoundEvent, String> _assetMap = {
     SoundEvent.tap: 'sounds/click.mp3',
+    SoundEvent.cardFlip: 'sounds/reveal.mp3',
     SoundEvent.cardReveal: 'sounds/reveal.mp3',
-    SoundEvent.countdown: 'sounds/tick.mp3',
-    SoundEvent.timerEnd: 'sounds/timer_end.mp3',
-    SoundEvent.explosion: 'sounds/explosion.mp3',
+    SoundEvent.wheelSpin: 'sounds/whoosh.mp3',
+    SoundEvent.wheelLand: 'sounds/click.mp3',
+    SoundEvent.wheelTick: 'sounds/tick.mp3',
+    SoundEvent.nextPlayer: 'sounds/whoosh.mp3',
     SoundEvent.win: 'sounds/success.mp3',
     SoundEvent.wrong: 'sounds/fail.mp3',
-    SoundEvent.freeze: 'sounds/freeze.mp3',
-    SoundEvent.nextPlayer: 'sounds/whoosh.mp3',
+    SoundEvent.timerTick: 'sounds/tick.mp3',
+    SoundEvent.timerEnd: 'sounds/timer_end.mp3',
+    SoundEvent.pageTransition: 'sounds/whoosh.mp3',
+    SoundEvent.xpGain: 'sounds/success.mp3',
+    SoundEvent.countdown: 'sounds/tick.mp3',
     SoundEvent.bombTick: 'sounds/tick.mp3',
+    SoundEvent.freeze: 'sounds/freeze.mp3',
+    SoundEvent.explosion: 'sounds/explosion.mp3',
   };
 
   Future<void> play(SoundEvent event, {required bool soundEnabled}) async {
@@ -38,9 +52,7 @@ class SoundService {
     if (asset == null) return;
     try {
       await _player.play(AssetSource(asset));
-    } catch (_) {
-      // Sound asset not found — fail silently
-    }
+    } catch (_) {}
   }
 
   Future<void> stop() async {

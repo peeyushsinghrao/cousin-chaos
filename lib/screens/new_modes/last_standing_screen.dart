@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
@@ -114,7 +115,7 @@ class _LastStandingScreenState extends State<LastStandingScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(

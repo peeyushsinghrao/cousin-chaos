@@ -1,14 +1,16 @@
 class Player {
   final String id;
   String name;
-  int score; // useful for Trivia Battle later
+  int score;
   int skipTokens;
+  int xp;
 
   Player({
     required this.id,
     required this.name,
     this.score = 0,
     this.skipTokens = 0,
+    this.xp = 0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -16,6 +18,7 @@ class Player {
         'name': name,
         'score': score,
         'skipTokens': skipTokens,
+        'xp': xp,
       };
 
   factory Player.fromJson(Map<String, dynamic> json) => Player(
@@ -23,5 +26,6 @@ class Player {
         name: json['name'],
         score: json['score'] ?? 0,
         skipTokens: json['skipTokens'] ?? 0,
+        xp: json['xp'] ?? 0,
       );
 }

@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -68,7 +69,7 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.borderGlass, width: 1),
             ),
-            child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+            child: const Icon(LucideIcons.arrowLeft, color: Colors.white, size: 18),
           ),
         ),
         title: Text(
@@ -81,19 +82,7 @@ class _ImpostorPlayersScreenState extends State<ImpostorPlayersScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: _onNext,
-            child: Text(
-              'Next →',
-              style: GoogleFonts.poppins(
-                color: AppColors.neonPink,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: Container(
         decoration: BoxDecoration(

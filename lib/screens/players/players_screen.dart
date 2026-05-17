@@ -1,3 +1,4 @@
+import 'package:cousin_chaos/core/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -101,7 +102,7 @@ class PlayersScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.add, color: Colors.white, size: 20),
+                          child: const Icon(LucideIcons.plus, color: Colors.white, size: 20),
                         ),
                       ),
                     ],
@@ -204,11 +205,11 @@ class _PlayerCardState extends State<_PlayerCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.check, color: Colors.green, size: 20),
+                      icon: const Icon(LucideIcons.check, color: Colors.green, size: 20),
                       onPressed: _save,
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                      icon: const Icon(LucideIcons.x, color: Colors.red, size: 20),
                       onPressed: _delete,
                     ),
                   ],

@@ -25,7 +25,6 @@ class PlayerManager extends ChangeNotifier {
       _players = decodedList.map((json) => Player.fromJson(json)).toList();
     }
 
-    // Default to 2 players if empty
     if (_players.isEmpty) {
       _players = [
         Player(id: _uuid.v4(), name: 'Player 1'),
@@ -38,7 +37,8 @@ class PlayerManager extends ChangeNotifier {
 
   Future<void> _savePlayers() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encodedList = jsonEncode(_players.map((p) => p.toJson()).toList());
+    final String encodedList =
+        jsonEncode(_players.map((p) => p.toJson()).toList());
     await prefs.setString(_storageKey, encodedList);
   }
 
@@ -51,20 +51,25 @@ class PlayerManager extends ChangeNotifier {
   }
 
   void removePlayer(String id) {
-    if (_players.length <= 2) return; // Minimum 2 players
+    if (_players.length <= 2) return;
     _players.removeWhere((p) => p.id == id);
     _savePlayers();
     notifyListeners();
   }
 
+  void deletePlayer(String id) => removePlayer(id);
+
   void updatePlayerName(String id, String newName) {
     final index = _players.indexWhere((p) => p.id == id);
     if (index != -1) {
-      _players[index].name = newName.isEmpty ? 'Player ${index + 1}' : newName;
+      _players[index].name =
+          newName.isEmpty ? 'Player ${index + 1}' : newName;
       _savePlayers();
       notifyListeners();
     }
   }
+
+  void renamePlayer(String id, String newName) => updatePlayerName(id, newName);
 
   void updatePlayerSkipTokens(String id, int skipTokens) {
     final index = _players.indexWhere((p) => p.id == id);
@@ -73,6 +78,14 @@ class PlayerManager extends ChangeNotifier {
       _savePlayers();
       notifyListeners();
     }
+  }
+
+  void addXp(String playerId, int amount) {
+    final index = _players.indexWhere((p) => p.id == playerId);
+    if (index == -1) return;
+    _players[index].xp += amount;
+    _savePlayers();
+    notifyListeners();
   }
 
   void resetScores() {
