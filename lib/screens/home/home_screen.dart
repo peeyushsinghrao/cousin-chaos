@@ -16,6 +16,7 @@ import '../new_modes/speed_challenge_screen.dart';
 import '../new_modes/two_truths_one_lie_screen.dart';
 import '../would_you_rather/wyr_game_screen.dart';
 import '../never_have_i_ever/nhie_game_screen.dart';
+import '../ludo/ludo_setup_screen.dart';
 import '../../core/navigation/page_transitions.dart';
 import '../../services/preferences_service.dart';
 import '../../services/sound_service.dart';
@@ -137,6 +138,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           color: AppColors.neonOrange,
           colorDark: const Color(0xFF4A1F0A),
           builder: (_) => const NeverHaveIEverScreen(),
+        ),
+        _ModeData(
+          name: 'Ludo Chaos',
+          tagline: '13 ways to cause chaos',
+          icon: Icons.casino_rounded,
+          color: AppColors.neonYellow,
+          colorDark: const Color(0xFF4A3800),
+          builder: (_) => const LudoSetupScreen(),
         ),
       ];
 
