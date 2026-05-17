@@ -1,0 +1,13 @@
+uploads = []
+
+[[generated]]
+id = "ALO-YxrsvU1T227elp-fR"
+uri = "file://assets/images/app_logo.png"
+type = "image"
+title = "generated_image"
+
+[[outputs]]
+id = "S2odTXWxNM0m5WBIXrODI"
+uri = "file://assets/images/app_logo.png"
+type = "image"
+title = "Cousin Chaos App Logo"
