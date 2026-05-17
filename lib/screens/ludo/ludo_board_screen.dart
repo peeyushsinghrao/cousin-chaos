@@ -43,11 +43,12 @@ class _LudoBoardScreenState extends State<LudoBoardScreen> {
   LudoToken? _pendingChaosToken;
   bool _isAnimating = false;
 
+  // Ludo King vivid palette
   static const List<Color> _playerColors = [
-    Color(0xFF4FC3F7),
-    Color(0xFFEF5350),
-    Color(0xFF66BB6A),
-    Color(0xFFFFEE58),
+    Color(0xFF1565C0), // Blue
+    Color(0xFFC62828), // Red
+    Color(0xFF2E7D32), // Green
+    Color(0xFFF9A825), // Yellow
   ];
 
   @override
@@ -622,153 +623,306 @@ class _LudoBoardScreenState extends State<LudoBoardScreen> {
           builder: (_) => AlertDialog(
             backgroundColor: AppColors.surfaceContainer,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
+                borderRadius: BorderRadius.circular(20)),
             title: Text('Leave game?',
                 style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
             content: const Text('Current game progress will be lost.'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Stay'),
-              ),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Stay')),
               TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text('Leave',
-                    style: TextStyle(color: AppColors.dareRed)),
-              ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('Leave',
+                      style: TextStyle(color: AppColors.dareRed))),
             ],
           ),
         );
         if (leave == true && mounted) Navigator.pop(context);
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFF0F1923),
         body: Container(
           decoration: const BoxDecoration(
-            gradient: AppColors.backgroundGradient,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF0F1923), Color(0xFF162032)],
+            ),
           ),
-          child: Stack(
-            children: [
-              SafeArea(
-                child: Column(
-                  children: [
-                    _buildAppBar(),
-                    _buildBoardArea(),
-                    _buildControlsArea(),
-                  ],
+          child: Stack(children: [
+            SafeArea(
+              child: Column(children: [
+                _buildTopBar(),
+                _buildPlayerPanelRow(top: true),
+                Expanded(child: _buildBoardArea()),
+                _buildPlayerPanelRow(top: false),
+                _buildBottomControls(),
+              ]),
+            ),
+            if (_showChaosPopup)
+              Positioned.fill(
+                child: ChaosTilePopup(
+                  playerName: _state.currentPlayer.name,
+                  prompt: _chaosPrompt,
+                  isTruth: _chaosIsTruth,
+                  onAccept: _onChaosAccept,
+                  onRefuse: _onChaosRefuse,
                 ),
               ),
-              if (_showChaosPopup)
-                Positioned.fill(
-                  child: ChaosTilePopup(
-                    playerName: _state.currentPlayer.name,
-                    prompt: _chaosPrompt,
-                    isTruth: _chaosIsTruth,
-                    onAccept: _onChaosAccept,
-                    onRefuse: _onChaosRefuse,
-                  ),
-                ),
-            ],
-          ),
+          ]),
         ),
       ),
     );
   }
 
-  Widget _buildAppBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          // Player turn indicator
-          Container(
-            width: 10,
-            height: 10,
+  // ── Top bar ───────────────────────────────────────────────────────────────
+
+  Widget _buildTopBar() {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(children: [
+        GestureDetector(
+          onTap: () => Navigator.maybePop(context),
+          child: Container(
+            width: 34, height: 34,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _currentColor,
-              boxShadow: [
-                BoxShadow(
-                  color: _currentColor.withAlpha(120),
-                  blurRadius: 8,
-                ),
-              ],
+              color: Colors.white.withAlpha(15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withAlpha(25)),
             ),
+            child: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: Colors.white, size: 14),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Text(
-                    "${_state.currentPlayer.name}'s Turn",
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('LUDO CHAOS',
+                style: GoogleFonts.anybody(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 1.5)),
+            if (_state.kingsRuleText != null)
+              Text('👑 "${_state.kingsRuleText}"',
+                  style: GoogleFonts.sora(
+                      fontSize: 9, color: const Color(0xFFF9A825)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+          ],
+        ),
+        const Spacer(),
+        if (_state.speedRoundActive)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFC62828).withAlpha(40),
+              borderRadius: BorderRadius.circular(8),
+              border:
+                  Border.all(color: const Color(0xFFC62828).withAlpha(160)),
+            ),
+            child: Text('⚡ SPEED',
+                style: GoogleFonts.anybody(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFFFF5252),
+                    letterSpacing: 1)),
+          ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: _showScoreboard,
+          child: Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withAlpha(25)),
+            ),
+            child: const Icon(Icons.leaderboard_rounded,
+                color: Colors.white70, size: 16),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── Player panel rows (Ludo King style) ───────────────────────────────────
+
+  Widget _buildPlayerPanelRow({required bool top}) {
+    // top=true → players 2 (Green) left, 3 (Yellow) right
+    // top=false → players 0 (Blue) left, 1 (Red) right
+    final indices = top ? [2, 3] : [0, 1];
+    final available = indices
+        .where((i) => i < _state.players.length)
+        .toList();
+    if (available.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      child: Row(
+        children: available
+            .map((i) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _buildPlayerPanel(_state.players[i]),
                   ),
-                  if (_state.currentPlayer.hasBounty) ...[
-                    const SizedBox(width: 8),
-                    const BountyBanner(),
-                  ],
-                ]),
-                if (_state.kingsRuleText != null)
-                  Text(
-                    '👑 "${_state.kingsRuleText}"',
-                    style: GoogleFonts.sora(
-                      fontSize: 10, color: AppColors.neonYellow,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-          if (_state.speedRoundActive)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.dareRed.withAlpha(30),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.dareRed.withAlpha(80)),
-              ),
-              child: Text('⚡ SPEED',
-                  style: GoogleFonts.anybody(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.dareRed,
-                      letterSpacing: 1)),
-            ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(Icons.leaderboard_rounded,
-                color: AppColors.textMuted, size: 20),
-            onPressed: _showScoreboard,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
+                ))
+            .toList(),
       ),
     );
   }
 
+  Widget _buildPlayerPanel(LudoPlayer p) {
+    final color = _playerColors[p.index];
+    final isActive = p.index == _state.currentPlayerIndex;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isActive
+            ? color.withAlpha(35)
+            : Colors.white.withAlpha(8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? color.withAlpha(200) : Colors.white.withAlpha(20),
+          width: isActive ? 1.5 : 1,
+        ),
+        boxShadow: isActive
+            ? [BoxShadow(color: color.withAlpha(60), blurRadius: 8)]
+            : [],
+      ),
+      child: Row(children: [
+        // Colour dot / active crown
+        Stack(alignment: Alignment.center, children: [
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withAlpha(isActive ? 200 : 100),
+              border: Border.all(
+                  color: isActive ? Colors.white : color.withAlpha(120),
+                  width: 1.5),
+              boxShadow: isActive
+                  ? [BoxShadow(color: color.withAlpha(80), blurRadius: 6)]
+                  : [],
+            ),
+            child: Center(
+              child: Text(
+                LudoPlayer.colorNames[p.index][0],
+                style: GoogleFonts.anybody(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white),
+              ),
+            ),
+          ),
+          if (isActive)
+            Positioned(
+              top: -2, right: -2,
+              child: Container(
+                width: 10, height: 10,
+                decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFF9A825)),
+                child: const Center(
+                  child: Text('▶',
+                      style: TextStyle(fontSize: 5, color: Colors.black)),
+                ),
+              ),
+            ),
+        ]),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                p.name.length > 7 ? '${p.name.substring(0, 7)}…' : p.name,
+                style: GoogleFonts.sora(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isActive ? Colors.white : Colors.white60),
+              ),
+              Row(children: [
+                Text(
+                  '${p.score}',
+                  style: GoogleFonts.anybody(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: isActive ? color : Colors.white38),
+                ),
+                const SizedBox(width: 4),
+                Text('pts',
+                    style: GoogleFonts.sora(
+                        fontSize: 8, color: Colors.white38)),
+              ]),
+            ],
+          ),
+        ),
+        // Token-home indicators (small coloured dots)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              for (int t = 0; t < 4; t++) ...[
+                if (t > 0) const SizedBox(width: 2),
+                Container(
+                  width: 6, height: 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: t < p.finishedCount
+                        ? color
+                        : Colors.white.withAlpha(30),
+                    border: Border.all(
+                        color: color.withAlpha(60), width: 0.5),
+                  ),
+                ),
+              ]
+            ]),
+            if (p.hasBounty)
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Text('💰', style: TextStyle(fontSize: 8)),
+              ),
+          ],
+        ),
+      ]),
+    );
+  }
+
+  // ── Board area ────────────────────────────────────────────────────────────
+
   Widget _buildBoardArea() {
-    return Expanded(
-      flex: 6,
-      child: InteractiveViewer(
-        minScale: 0.8,
-        maxScale: 3.0,
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: LayoutBuilder(
-              builder: (_, constraints) {
-                final cellSize = constraints.maxWidth / 15;
-                return Stack(
-                  children: [
+    return Center(
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(140),
+                  blurRadius: 24,
+                  spreadRadius: 4,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LayoutBuilder(
+                builder: (_, constraints) {
+                  final cellSize = constraints.maxWidth / 15;
+                  return Stack(children: [
                     CustomPaint(
                       painter: LudoBoardPainter(state: _state),
                       size: Size.infinite,
@@ -776,7 +930,8 @@ class _LudoBoardScreenState extends State<LudoBoardScreen> {
                     for (final player in _state.players)
                       for (final token in player.tokens)
                         AnimatedPositioned(
-                          duration: const Duration(milliseconds: 80),
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
                           left: _tokenOffset(token, cellSize).dx,
                           top: _tokenOffset(token, cellSize).dy,
                           child: LudoTokenWidget(
@@ -789,9 +944,9 @@ class _LudoBoardScreenState extends State<LudoBoardScreen> {
                                 : null,
                           ),
                         ),
-                  ],
-                );
-              },
+                  ]);
+                },
+              ),
             ),
           ),
         ),
@@ -799,135 +954,110 @@ class _LudoBoardScreenState extends State<LudoBoardScreen> {
     );
   }
 
-  Widget _buildControlsArea() {
-    return Expanded(
-      flex: 4,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withAlpha(15)),
-        ),
-        child: Column(
-          children: [
-            _buildScoreBadgesRow(),
-            const SizedBox(height: 14),
-            Expanded(child: _buildDiceAndActions()),
-          ],
-        ),
+  // ── Bottom controls ───────────────────────────────────────────────────────
+
+  Widget _buildBottomControls() {
+    final canRoll = _state.phase == LudoPhase.rolling && !_isAnimating;
+
+    return Container(
+      height: 90,
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(8),
+        border: Border(top: BorderSide(color: Colors.white.withAlpha(18))),
       ),
-    );
-  }
-
-  Widget _buildScoreBadgesRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: _state.players.map((p) {
-        final color = _playerColors[p.index];
-        final isActive = p.index == _state.currentPlayerIndex;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: isActive ? color.withAlpha(30) : AppColors.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isActive ? color : AppColors.outlineVariant,
-              width: isActive ? 1.5 : 1,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8, height: 8,
-                decoration: BoxDecoration(
-                    shape: BoxShape.circle, color: color),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                p.name.length > 5 ? p.name.substring(0, 5) : p.name,
-                style: GoogleFonts.sora(
-                  fontSize: 9,
-                  color: isActive ? Colors.white : AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '${p.score}',
-                style: GoogleFonts.anybody(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: isActive ? color : AppColors.textMuted,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildDiceAndActions() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Dice
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            LudoDiceWidget(
-              value: _state.lastDiceValue,
-              value2: _state.lastDiceValue2,
-              isRolling: _isDiceRolling,
-              isPowerRoll: _state.isPowerRoll,
-              isSpeedRound: _state.speedRoundActive,
-              speedProgress: _speedProgress,
-              onRoll: (_state.phase == LudoPhase.rolling && !_isAnimating)
-                  ? _onRollDice
-                  : null,
-              onPickDice: _state.isPowerRoll ? _onPickPowerDice : null,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _phaseLabel(),
-              style: GoogleFonts.sora(
-                fontSize: 10,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ],
-        ),
-        const Spacer(),
-        // Action buttons
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // ── Action buttons (left) ──────────────────────────────────
+          Row(children: [
             if (_state.currentPlayer.sabotageCardsLeft > 0)
-              _buildActionButton(
+              _actionChip(
                 icon: Icons.bolt_rounded,
                 label: 'Sabotage\n×${_state.currentPlayer.sabotageCardsLeft}',
-                color: AppColors.dareRed,
+                color: const Color(0xFFC62828),
                 onTap: _showSabotageSheet,
               ),
             if (!_state.currentPlayer.swapTrapUsed) ...[
-              const SizedBox(height: 8),
-              _buildActionButton(
+              const SizedBox(width: 6),
+              _actionChip(
                 icon: Icons.swap_horiz_rounded,
                 label: 'Swap\nTrap',
-                color: AppColors.neonOrange,
+                color: const Color(0xFFE65100),
                 onTap: _enterSwapMode,
               ),
             ],
-          ],
-        ),
-      ],
+          ]),
+
+          // ── Dice + phase label (centre) ────────────────────────────
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              LudoDiceWidget(
+                value: _state.lastDiceValue,
+                value2: _state.lastDiceValue2,
+                isRolling: _isDiceRolling,
+                isPowerRoll: _state.isPowerRoll,
+                isSpeedRound: _state.speedRoundActive,
+                speedProgress: _speedProgress,
+                onRoll: canRoll ? _onRollDice : null,
+                onPickDice: _state.isPowerRoll ? _onPickPowerDice : null,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                _phaseLabel(),
+                style: GoogleFonts.sora(
+                    fontSize: 9, color: Colors.white54),
+              ),
+            ],
+          ),
+
+          // ── Turn indicator / dice value (right) ────────────────────
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentColor.withAlpha(30),
+                  border: Border.all(color: _currentColor, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                        color: _currentColor.withAlpha(80),
+                        blurRadius: 10)
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    _state.lastDiceValue.toString(),
+                    style: GoogleFonts.anybody(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                _state.currentPlayer.name.length > 6
+                    ? _state.currentPlayer.name.substring(0, 6)
+                    : _state.currentPlayer.name,
+                style: GoogleFonts.sora(
+                    fontSize: 9,
+                    color: _currentColor,
+                    fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildActionButton({
+  Widget _actionChip({
     required IconData icon,
     required String label,
     required Color color,
@@ -936,49 +1066,34 @@ class _LudoBoardScreenState extends State<LudoBoardScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withAlpha(25),
+          color: color.withAlpha(28),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withAlpha(100)),
+          border: Border.all(color: color.withAlpha(120)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 3),
-            Text(
-              label,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(height: 2),
+          Text(label,
               style: GoogleFonts.sora(
-                fontSize: 9,
-                color: color,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+                  fontSize: 8,
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2),
+              textAlign: TextAlign.center),
+        ]),
       ),
     );
   }
 
   String _phaseLabel() {
     switch (_state.phase) {
-      case LudoPhase.rolling:
-        return 'Tap dice to roll';
-      case LudoPhase.choosingToken:
-        return 'Tap a token to move';
-      case LudoPhase.animating:
-        return 'Moving...';
-      case LudoPhase.chaosPrompt:
-        return 'Read the prompt!';
-      case LudoPhase.swapSelect:
-        return 'Tap 2 tokens to swap';
-      case LudoPhase.giftPicker:
-        return 'Pick a token for +6';
-      default:
-        return '';
+      case LudoPhase.rolling:      return 'Tap 🎲 to roll';
+      case LudoPhase.choosingToken: return 'Pick a token';
+      case LudoPhase.swapSelect:   return 'Tap 2 tokens';
+      case LudoPhase.giftPicker:   return 'Pick token +6';
+      default:                      return '';
     }
   }
 }

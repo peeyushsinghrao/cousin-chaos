@@ -1,9 +1,9 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/ludo_token.dart';
-import '../../../core/models/ludo_player.dart';
 import '../../../core/constants/ludo_data.dart';
 
+/// Ludo King–style 3-D circular token.
 class LudoTokenWidget extends StatelessWidget {
   final LudoToken token;
   final double cellSize;
@@ -18,68 +18,116 @@ class LudoTokenWidget extends StatelessWidget {
     this.onTap,
   });
 
-  static const List<Color> _neonColors = [
-    Color(0xFF4FC3F7), // Blue
-    Color(0xFFEF5350), // Red
-    Color(0xFF66BB6A), // Green
-    Color(0xFFFFEE58), // Yellow
+  // Vivid Ludo King palette
+  static const List<Color> _base = [
+    Color(0xFF1565C0), // Blue
+    Color(0xFFC62828), // Red
+    Color(0xFF2E7D32), // Green
+    Color(0xFFF9A825), // Yellow
   ];
-
-  Color get _color => _neonColors[token.playerIndex];
+  static const List<Color> _light = [
+    Color(0xFF90CAF9),
+    Color(0xFFEF9A9A),
+    Color(0xFFA5D6A7),
+    Color(0xFFFFE082),
+  ];
+  static const List<Color> _shine = [
+    Color(0xFFBBDEFB),
+    Color(0xFFFFCDD2),
+    Color(0xFFC8E6C9),
+    Color(0xFFFFF9C4),
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final size = cellSize * 0.70;
+
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: cellSize * 0.75,
-        height: cellSize * 0.75,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: _color.withAlpha(220),
-          border: Border.all(
-            color: isSelectable ? Colors.white : _color.withAlpha(120),
-            width: isSelectable ? 2.5 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _color.withAlpha(isSelectable ? 180 : 70),
-              blurRadius: isSelectable ? 14 : 6,
-              spreadRadius: isSelectable ? 3 : 0,
-            ),
-          ],
-        ),
+      child: SizedBox(
+        width: size,
+        height: size,
         child: Stack(alignment: Alignment.center, children: [
-          Text(
-            LudoPlayer.colorNames[token.playerIndex][0],
-            style: GoogleFonts.poppins(
-              fontSize: cellSize * 0.28,
-              fontWeight: FontWeight.w900,
-              color: Colors.black,
+          // Pulsing selection ring
+          if (isSelectable)
+            _PulseRing(color: _base[token.playerIndex], size: size),
+
+          // Drop shadow
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(isSelectable ? 130 : 80),
+                  blurRadius: isSelectable ? 10 : 5,
+                  offset: const Offset(0, 3),
+                ),
+                if (isSelectable)
+                  BoxShadow(
+                    color: _base[token.playerIndex].withAlpha(160),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                  ),
+              ],
             ),
           ),
+
+          // Main token body — gradient for 3-D look
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                center: const Alignment(-0.3, -0.4),
+                radius: 0.85,
+                colors: [
+                  _shine[token.playerIndex],
+                  _light[token.playerIndex],
+                  _base[token.playerIndex],
+                ],
+                stops: const [0.0, 0.4, 1.0],
+              ),
+              border: Border.all(
+                color: isSelectable
+                    ? Colors.white
+                    : _base[token.playerIndex].withAlpha(180),
+                width: isSelectable ? 2.0 : 1.2,
+              ),
+            ),
+          ),
+
+          // Inner white dome highlight
           Positioned(
-            bottom: 0,
-            right: 0,
-            child: Text(
-              LudoToken.personalityEmoji(token.personality),
-              style: TextStyle(fontSize: cellSize * 0.2),
+            top: size * 0.12,
+            left: size * 0.18,
+            child: Container(
+              width: size * 0.38,
+              height: size * 0.26,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(size * 0.14),
+                color: Colors.white.withAlpha(120),
+              ),
             ),
           ),
+
+          // Jail bars overlay
           if (token.isInJail)
-            Positioned.fill(
-              child: CustomPaint(painter: _JailBarsPainter()),
+            ClipOval(
+              child: SizedBox(
+                width: size, height: size,
+                child: CustomPaint(painter: _JailBarsPainter()),
+              ),
             ),
+
+          // Curse skull
           if (token.curseRevealed)
             Positioned(
-              top: 0,
-              left: 0,
-              child: Text('💀', style: TextStyle(fontSize: cellSize * 0.2)),
-            ),
-          if (isSelectable)
-            Positioned.fill(
-              child: _PulseIndicator(color: _color),
+              top: 0, right: 0,
+              child: Text('💀',
+                  style: TextStyle(fontSize: size * 0.32, height: 1)),
             ),
         ]),
       ),
@@ -87,71 +135,72 @@ class LudoTokenWidget extends StatelessWidget {
   }
 }
 
+/// Calculates absolute board position (top-left) of a token.
 Offset tokenOffset(LudoToken token, double cellSize) {
+  final half = cellSize / 2;
+
   if (token.state == TokenState.home) {
-    final homeOrigins = [
-      [0.0, 0.0],
-      [9.0, 0.0],
-      [9.0, 9.0],
-      [0.0, 9.0],
+    // Home zone origins (top-left corner of the 6×6 zone)
+    const origins = [
+      [0.0, 0.0], // Blue  top-left
+      [9.0, 0.0], // Red   top-right
+      [9.0, 9.0], // Green bottom-right
+      [0.0, 9.0], // Yellow bottom-left
     ];
-    final slotOffsets = [
-      const Offset(1.5, 1.5),
-      const Offset(3.5, 1.5),
-      const Offset(1.5, 3.5),
-      const Offset(3.5, 3.5),
+    // 4 slot positions inside the zone (centred in each 2×2 quarter)
+    const slots = [
+      Offset(1.75, 1.75),
+      Offset(4.25, 1.75),
+      Offset(1.75, 4.25),
+      Offset(4.25, 4.25),
     ];
-    final origin = homeOrigins[token.playerIndex];
-    final slot = slotOffsets[token.tokenIndex];
+    final o = origins[token.playerIndex];
+    final s = slots[token.tokenIndex];
     return Offset(
-      (origin[0] + slot.dx) * cellSize - cellSize * 0.375,
-      (origin[1] + slot.dy) * cellSize - cellSize * 0.375,
+      (o[0] + s.dx) * cellSize - cellSize * 0.35,
+      (o[1] + s.dy) * cellSize - cellSize * 0.35,
     );
   }
 
   if (token.pathPosition >= 52) {
-    final colIndex = token.pathPosition - 52;
-    final cols = [kBlueHomeCol, kRedHomeCol, kGreenHomeCol, kYellowHomeCol];
-    final sq = cols[token.playerIndex][colIndex.clamp(0, 5)];
-    final stackOffset = [
-      const Offset(0, 0),
-      const Offset(2, 2),
-      const Offset(-2, -2),
-      const Offset(2, -2),
-    ][token.tokenIndex];
+    // Inside home column
+    final colIndex = (token.pathPosition - 52).clamp(0, 5);
+    const cols = [kBlueHomeCol, kRedHomeCol, kGreenHomeCol, kYellowHomeCol];
+    final sq = cols[token.playerIndex][colIndex];
+    // Stack 4 tokens with tiny offset so they don't perfectly overlap
+    const stackDx = [0.0,  4.0, -4.0,  0.0];
+    const stackDy = [0.0, -4.0,  0.0,  4.0];
     return Offset(
-      sq[0] * cellSize + stackOffset.dx - cellSize * 0.375,
-      sq[1] * cellSize + stackOffset.dy - cellSize * 0.375,
+      sq[0] * cellSize + stackDx[token.tokenIndex] - cellSize * 0.35,
+      sq[1] * cellSize + stackDy[token.tokenIndex] - cellSize * 0.35,
     );
   }
 
   if (token.pathPosition < 0 || token.pathPosition >= kLudoMainPath.length) {
-    return const Offset(-100, -100);
+    return const Offset(-200, -200); // off-screen
   }
 
   final sq = kLudoMainPath[token.pathPosition];
-  final offsets = [
-    const Offset(0, 0),
-    const Offset(4, 0),
-    const Offset(0, 4),
-    const Offset(4, 4),
-  ];
+  // Slightly stagger multiple tokens on same cell
+  const dx = [0.0,  3.0, -3.0,  0.0];
+  const dy = [0.0, -3.0,  0.0,  3.0];
   return Offset(
-    sq[0] * cellSize + offsets[token.tokenIndex].dx - cellSize * 0.375,
-    sq[1] * cellSize + offsets[token.tokenIndex].dy - cellSize * 0.375,
+    sq[0] * cellSize + dx[token.tokenIndex] + half * 0.15,
+    sq[1] * cellSize + dy[token.tokenIndex] + half * 0.15,
   );
 }
+
+// ─── Private helpers ──────────────────────────────────────────────────────────
 
 class _JailBarsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black.withAlpha(160)
-      ..strokeWidth = size.width * 0.12;
-    final count = 3;
-    for (int i = 0; i < count; i++) {
-      final x = size.width * (i + 1) / (count + 1);
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    final p = Paint()
+      ..color = Colors.black.withAlpha(150)
+      ..strokeWidth = size.width * 0.10;
+    for (int i = 1; i <= 3; i++) {
+      final x = size.width * i / 4;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
     }
   }
 
@@ -159,48 +208,69 @@ class _JailBarsPainter extends CustomPainter {
   bool shouldRepaint(_JailBarsPainter old) => false;
 }
 
-class _PulseIndicator extends StatefulWidget {
+class _PulseRing extends StatefulWidget {
   final Color color;
-  const _PulseIndicator({required this.color});
+  final double size;
+  const _PulseRing({required this.color, required this.size});
 
   @override
-  State<_PulseIndicator> createState() => _PulseIndicatorState();
+  State<_PulseRing> createState() => _PulseRingState();
 }
 
-class _PulseIndicatorState extends State<_PulseIndicator>
+class _PulseRingState extends State<_PulseRing>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _anim;
+  late AnimationController _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 600),
     )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) => Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: widget.color.withAlpha((_anim.value * 200).toInt()),
-            width: 2,
+      animation: _ctrl,
+      builder: (_, __) {
+        final scale = 1.0 + _ctrl.value * 0.35;
+        return Transform.scale(
+          scale: scale,
+          child: Container(
+            width: widget.size,
+            height: widget.size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: widget.color.withAlpha((180 * (1 - _ctrl.value)).toInt()),
+                width: 2,
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
+}
+
+/// Draw a 5-pointed star at [center] with outer [radius].
+void drawStar(Canvas canvas, Offset center, double radius, Color color) {
+  final path = Path();
+  for (int i = 0; i < 10; i++) {
+    final r = i.isEven ? radius : radius * 0.45;
+    final angle = (i * 36 - 90) * math.pi / 180;
+    final x = center.dx + r * math.cos(angle);
+    final y = center.dy + r * math.sin(angle);
+    if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+  }
+  path.close();
+  canvas.drawPath(path, Paint()..color = color);
 }
