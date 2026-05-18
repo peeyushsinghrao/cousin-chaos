@@ -1,3 +1,10 @@
+class AlibiQuestions {
+  static List<String> get categories => alibiQuestionsByCategory.keys.toList();
+
+  static List<String> getScenarios(String category) =>
+      alibiQuestionsByCategory[category] ?? alibiQuestionsByCategory.values.first;
+}
+
 const Map<String, List<String>> alibiQuestionsByCategory = {
   'Food Crime': [
     'Someone finished the last slice of birthday cake before the birthday person got any. Where were you when the cake went missing?',

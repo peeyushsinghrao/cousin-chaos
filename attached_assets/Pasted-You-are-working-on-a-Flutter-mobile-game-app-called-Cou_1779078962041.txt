@@ -1,0 +1,492 @@
+You are working on a Flutter mobile game app called "Cousin Chaos" — 
+a party game app for families and friend groups. The app is already 
+built and deployed at cousin-chaos.netlify.app. You need to implement 
+several improvements across the app.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 PRIORITY 1 — FIX MULTIPLAYER (BROKEN RIGHT NOW)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CURRENT PROBLEM:
+The multiplayer screen at lib/screens/multiplayer/ shows this error:
+"Multiplayer is not configured yet"
+
+This means the backend/real-time service for multiplayer rooms is 
+missing or not connected. The UI exists (Create Room / Join Room tabs, 
+name input, room code) but the actual real-time functionality is not 
+implemented.
+
+THE FULL SOLUTION — Use Supabase Realtime:
+
+STEP 1 — Add dependencies to pubspec.yaml:
+  supabase_flutter: ^2.3.4
+
+STEP 2 — Create a FREE Supabase project at supabase.com and get:
+  - Project URL (looks like: https://xxxx.supabase.co)
+  - Anon public key
+
+STEP 3 — Create these tables in Supabase SQL editor:
+
+  -- Rooms table
+  CREATE TABLE rooms (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    code TEXT UNIQUE NOT NULL,
+    host_name TEXT NOT NULL,
+    host_id TEXT NOT NULL,
+    game_mode TEXT,
+    status TEXT DEFAULT 'waiting',
+    max_players INT DEFAULT 8,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  -- Players in room table
+  CREATE TABLE room_players (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    room_code TEXT NOT NULL,
+    player_name TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    is_host BOOLEAN DEFAULT FALSE,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    is_ready BOOLEAN DEFAULT FALSE
+  );
+
+  -- Game events table (for real-time game actions)
+  CREATE TABLE game_events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    room_code TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    event_data JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  -- Enable Row Level Security but allow all for now
+  ALTER TABLE rooms ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE room_players ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE game_events ENABLE ROW LEVEL SECURITY;
+
+  CREATE POLICY "Allow all" ON rooms FOR ALL USING (true);
+  CREATE POLICY "Allow all" ON room_players FOR ALL USING (true);
+  CREATE POLICY "Allow all" ON game_events FOR ALL USING (true);
+
+  -- Enable realtime on these tables
+  ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
+  ALTER PUBLICATION supabase_realtime ADD TABLE room_players;
+  ALTER PUBLICATION supabase_realtime ADD TABLE game_events;
+
+STEP 4 — Initialize Supabase in main.dart:
+
+  await Supabase.initialize(
+    url: 'YOUR_SUPABASE_URL',
+    anonKey: 'YOUR_SUPABASE_ANON_KEY',
+  );
+
+STEP 5 — Create lib/services/multiplayer_service.dart:
+
+  This service must handle:
+
+  A) GENERATE ROOM CODE
+     - Generate a random 6-character uppercase code
+     - Example: "CHAOS7", "GAME42", "FUN123"
+     - Code must be unique — check against rooms table
+
+  B) CREATE ROOM (Host flow)
+     - Insert new row into rooms table with generated code
+     - Insert host into room_players table with is_host: true
+     - Subscribe to room_players channel for this room code
+     - Listen for new players joining in real-time
+     - Return the room code to show on screen
+
+  C) JOIN ROOM (Guest flow)
+     - Take the 6-digit code user typed
+     - Check rooms table — does this code exist?
+     - If yes and status is 'waiting' — insert player into room_players
+     - Subscribe to room_players channel for this room code  
+     - Listen for host starting the game
+     - If code does not exist — show error "Room not found"
+     - If room is full — show error "Room is full"
+
+  D) REAL-TIME LISTENERS
+     - When a new player joins → update player list on all devices
+     - When host starts game → navigate all players to game screen
+     - When a player leaves → remove from list on all devices
+     - When game event fires → sync game state across all devices
+
+  E) LEAVE ROOM
+     - Delete player from room_players table
+     - If host leaves → delete entire room + all room_players
+     - Unsubscribe from all realtime channels
+
+  F) START GAME (Host only)
+     - Update rooms table status to 'in_progress'
+     - Insert game_event with type 'game_started' and selected mode
+     - All guests receive this via realtime and navigate to game
+
+STEP 6 — Rebuild lib/screens/multiplayer/multiplayer_screen.dart:
+
+  The screen must have two tabs:
+
+  TAB 1 — CREATE ROOM:
+    - Name input field (already exists — keep it)
+    - "Create Room" button
+    - On tap: call multiplayerService.createRoom(hostName)
+    - After creation: navigate to RoomLobbyScreen showing:
+        * The 6-character room code in HUGE text (easy to read/share)
+        * A "Copy Code" button
+        * A "Share" button  
+        * List of players who have joined (updates in real-time)
+        * A "Start Game" button (only active when 2+ players joined)
+        * Each player shown with their DiceBear bottts avatar
+
+  TAB 2 — JOIN ROOM:
+    - Name input field
+    - 6-box code input (one box per character — like OTP input)
+    - "Join Room" button
+    - On tap: call multiplayerService.joinRoom(playerName, code)
+    - After joining: navigate to RoomLobbyScreen showing:
+        * "Waiting for host to start..." message
+        * List of all players in the room (real-time)
+        * Host is marked with a 👑 crown badge
+        * A "Leave Room" button
+
+STEP 7 — Create lib/screens/multiplayer/room_lobby_screen.dart:
+
+  This is the waiting room screen for both host and guests.
+  
+  HOST VIEW shows:
+    - Room code in big bold text with copy button
+    - "Share with friends" subtitle
+    - Real-time player list (name + robot avatar + ready status)
+    - Player count badge "3/8 players"
+    - "Start Game" button — disabled until 2+ players
+    - Dropdown to select which game mode to play
+    - When Start Game tapped:
+        * Update room status
+        * Insert game_started event
+        * Navigate host to selected game mode
+
+  GUEST VIEW shows:
+    - "Waiting for [HostName] to start..." 
+    - Animated pulsing dots to show it's live
+    - Same player list as host
+    - "Leave Room" button
+    - When game_started event received via realtime:
+        * Automatically navigate to the game mode screen
+        * No tap required — it just happens
+
+STEP 8 — Handle disconnection:
+
+  - Use WidgetsBindingObserver to detect app going to background
+  - On app pause/close: call leaveRoom() automatically
+  - Show "A player disconnected" toast when someone leaves mid-game
+  - If host disconnects during game: show "Host left — game ended" 
+    and return all guests to home screen
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔊 PRIORITY 2 — ADD SOUND EFFECTS SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add this dependency:
+  audioplayers: ^6.0.0
+
+Place all sound files in: assets/sounds/
+
+Add to pubspec.yaml assets section:
+  - assets/sounds/card-flip.mp3
+  - assets/sounds/tap.mp3
+  - assets/sounds/countdown.mp3
+  - assets/sounds/timer_tick.mp3
+  - assets/sounds/wheel_spin.mp3
+  - assets/sounds/card_reveal.mp3
+  - assets/sounds/freeze.mp3
+  - assets/sounds/win.mp3
+  - assets/sounds/game_start.mp3
+  - assets/sounds/explosion.mp3
+
+Create lib/services/sound_service.dart as a singleton:
+
+  class SoundService {
+    static final SoundService _instance = SoundService._internal();
+    factory SoundService() => _instance;
+    SoundService._internal();
+
+    bool isMuted = false;
+    final Map<String, AudioPlayer> _players = {};
+
+    Future<void> init() async {
+      // Preload all sounds at app start
+      final sounds = [
+        'card-flip', 'tap', 'countdown', 'timer_tick',
+        'wheel_spin', 'card_reveal', 'freeze', 'win',
+        'game_start', 'explosion'
+      ];
+      for (final s in sounds) {
+        final player = AudioPlayer();
+        await player.setSource(AssetSource('sounds/$s.mp3'));
+        _players[s] = player;
+      }
+    }
+
+    Future<void> play(String name, {double volume = 1.0}) async {
+      if (isMuted) return;
+      final player = _players[name];
+      if (player == null) return;
+      await player.stop();
+      await player.setVolume(volume);
+      await player.resume();
+    }
+
+    void toggleMute() => isMuted = !isMuted;
+    void dispose() {
+      for (final p in _players.values) p.dispose();
+    }
+  }
+
+SOUND MAPPING — play these sounds at these exact moments:
+
+  tap.mp3          → Every button tap across the entire app (volume: 0.5)
+  game_start.mp3   → When "Let's Go" / "Start Game" is tapped (volume: 1.0)
+  card-flip.mp3    → When any card starts its flip animation (volume: 0.7)
+  card_reveal.mp3  → When card finishes flipping, content shows (volume: 0.8)
+  wheel_spin.mp3   → When spin wheel starts spinning — play full file (volume: 0.9)
+  countdown.mp3    → Before a timed phase begins — 3-2-1 sound (volume: 0.9)
+  timer_tick.mp3   → Every second while timer runs (volume: 0.6)
+  win.mp3          → When leaderboard / results screen appears (volume: 1.0)
+  explosion.mp3    → When bomb explodes in Bomb Pass mode (volume: 1.0)
+  freeze.mp3       → When player is frozen in Freeze Mode (volume: 0.8)
+  
+  For BOMB TICK: reuse timer_tick.mp3 at faster speed (no separate file)
+  For PAGE TRANSITIONS: reuse tap.mp3 at volume 0.3
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 PRIORITY 3 — REPLACE PLAYER AVATARS WITH DICEBEAR ROBOTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add dependency:
+  cached_network_image: ^3.3.1
+
+Remove the current emoji picker system completely.
+
+Replace it with DiceBear bottts robot avatars:
+  URL format: https://api.dicebear.com/7.x/bottts/png?seed=PLAYERNAME&size=200
+
+Create lib/widgets/player_avatar.dart:
+
+  - Takes playerName (String) and playerColor (Color) as params
+  - Shows a circular avatar with colored glow border
+  - Loads robot image from DiceBear URL using CachedNetworkImage
+  - While loading: show shimmer/spinner placeholder
+  - If offline/error: show player's first initial as fallback
+  - When tappableToChange is true:
+      * Show a small refresh icon badge on bottom-right of circle
+      * On tap: increment internal seed counter (_seed++)
+      * New URL = seed=PLAYERNAME_1, PLAYERNAME_2, PLAYERNAME_3 etc
+      * Each gives a completely different robot face
+  - Sizes used across app:
+      * Player setup screen: 90px (tappable)
+      * Player list / game screen: 56px (not tappable)
+      * Leaderboard: 110px (not tappable)
+      * Small indicators: 44px (not tappable)
+
+On the player setup screen:
+  - When player types their name → preload avatar URL immediately
+  - This makes avatar appear instantly with zero delay
+  - Use precacheImage() with CachedNetworkImageProvider
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🐛 PRIORITY 4 — CRITICAL BUG FIXES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Fix these bugs in this exact order:
+
+BUG 1 — File: lib/screens/new_modes/two_truths_one_lie_screen.dart
+  PROBLEM: Scoring formula is completely wrong
+  In _buildRevealPhase() replace the entire score block with:
+    final bool nobodyGuessed = correctGuesses == 0;
+    if (nobodyGuessed) {
+      _scores[_currentPlayerName] = (_scores[_currentPlayerName] ?? 0) + 3;
+    }
+    for (final entry in _votes.entries) {
+      final votedIndex = entry.value;
+      final wasCorrect = _shuffledStatements[votedIndex]['isLie'] == true;
+      if (wasCorrect) {
+        _scores[entry.key] = (_scores[entry.key] ?? 0) + 1;
+      }
+    }
+
+BUG 2 — File: lib/screens/new_modes/two_truths_one_lie_screen.dart
+  PROBLEM: int? _selectedIndex declared inside StatefulBuilder resets on rebuild
+  FIX: Move int? _selectedIndex to class-level state field
+
+BUG 3 — File: lib/screens/new_modes/alibi_screen.dart
+  PROBLEM: Wrong data file used, 8 wrong categories hardcoded
+  FIX: 
+    - Delete lib/core/constants/alibi_data.dart (duplicate)
+    - Add: import '../../data/alibi_questions.dart';
+    - Replace _alibiCategories with AlibiQuestions.categories
+    - Replace _scenarios with AlibiQuestions.getScenarios(category)
+
+BUG 4 — File: lib/screens/new_modes/alibi_screen.dart
+  PROBLEM: {time} placeholder only replaced in first question template
+  FIX in _generateQuestions():
+    final timeStr = _rng.nextInt(12) + 1;
+    final ampm = _rng.nextBool() ? 'AM' : 'PM';
+    final t = '${timeStr}:00 $ampm';
+    _questions = _questionTemplates
+        .map((q) => q.replaceAll('{time}', t))
+        .toList()..shuffle(_rng);
+
+BUG 5 — File: lib/screens/home/home_screen.dart
+  PROBLEM: Truth or Dare builder does throw '' (crashes on call)
+  FIX: Change to: builder: (_) => const PackSelectionScreen(),
+
+BUG 6 — File: lib/screens/new_modes/impostor_game_screen.dart
+  PROBLEM: Single tap on player name immediately casts vote — no confirmation
+  FIX: Wrap _castVote with showDialog confirmation AlertDialog
+    with Cancel and Confirm buttons before calling _confirmVote
+
+BUG 7 — File: lib/screens/never_have_i_ever/nhie_game_screen.dart
+  PROBLEM: _drinkCounts keyed by player name — breaks with duplicate names
+  FIX: Change to p.id as key:
+    _drinkCounts = {for (final p in _gamePlayers) p.id: 0};
+    Resolve name for display: _gamePlayers.firstWhere((p) => p.id == entry.key).name
+
+BUG 8 — File: lib/screens/new_modes/two_truths_one_lie_screen.dart
+  PROBLEM: SessionService.saveSession() called inside build() — creates duplicates
+  FIX: Add bool _sessionSaved = false; and wrap:
+    if (!_sessionSaved) {
+      _sessionSaved = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SessionService.saveSession(SessionRecord(...));
+      });
+    }
+
+BUG 9 — File: lib/screens/new_modes/impostor_game_screen.dart
+  PROBLEM: Timer still runs and shows when timeLimitEnabled is false
+  FIX: Set _timeLeft = -1 when disabled, never start timer periodic
+    Guard all timer reads with: if (widget.timeLimitEnabled && _timeLeft >= 0)
+
+BUG 10 — File: lib/screens/home/home_screen.dart
+  PROBLEM: Welcome says "Hey Player 👋" — looks broken
+  FIX: Replace with static text: "Ready for Chaos? ⚡"
+
+BUG 11 — File: lib/screens/home/home_screen.dart
+  PROBLEM: Last Standing screen exists but is unreachable from home
+  FIX: Add Last Standing to _modes list with correct builder
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 PRIORITY 5 — STANDARDISE PRE-GAME FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Every game mode must follow this screen order:
+  Step 1: Disclaimer (only if mode has adult/mature content)
+  Step 2: Category Selection (only if mode has categories)
+  Step 3: Settings / Player Setup
+  Step 4: Start Game
+
+MODES THAT NEED DISCLAIMER:
+  Truth or Dare, Never Have I Ever, Would You Rather,
+  Alibi, Two Truths One Lie
+
+MODES THAT NEED CATEGORY SCREEN:
+  Truth or Dare → Pack selection (Spicy/Mild/Custom)
+  Would You Rather → Category chips (Food/Social/Wild etc)
+  Never Have I Ever → Pack selection (Classic/Party/Custom)
+  Impostor → Category grid (Gaming/Movies/Food etc)
+  Act It Out → Category grid (Animals/Movies/Jobs etc)
+  Alibi → Category cards (Food Crime/House Crime etc)
+
+MODES WITH NO CATEGORY SCREEN:
+  Two Truths One Lie (players write their own content)
+  Speed Challenge (single fixed challenge set)
+  Last Standing (single fixed challenge list)
+
+Create these shared widgets:
+
+  lib/screens/shared/pre_game_scaffold.dart
+    A reusable scaffold with: back button, mode name header,
+    step indicator dots, gradient bg, bottom CTA button
+
+  lib/screens/shared/category_grid_screen.dart
+    Configurable grid: takes List<CategoryItem>, supports
+    multi-select, min selection, Select All toggle,
+    returns List<String> selected on confirm
+
+  lib/widgets/counter_row.dart
+    [-] [N] [+] counter with min/max, recommended label
+
+  lib/widgets/start_game_button.dart
+    Big CTA with summary chips above it showing what was selected
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 IMPLEMENTATION ORDER — DO IN THIS EXACT SEQUENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Fix all 11 bugs listed in Priority 4 first
+2. Add sound service and map all sounds (Priority 2)
+3. Replace avatars with DiceBear robots (Priority 3)
+4. Build shared pre-game widgets (Priority 5 widgets)
+5. Rewire each mode's pre-game flow (Priority 5 flows)
+6. Fix multiplayer with Supabase (Priority 1)
+7. Test every mode from home to game end
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ STRICT RULES — NEVER VIOLATE THESE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- DO NOT change any game logic or question/data logic
+- DO NOT remove any existing game modes
+- DO NOT break existing navigation
+- DO NOT change the app's visual theme, colors, or fonts
+- DO NOT remove existing animations
+- ALWAYS check if sound is muted before playing any sound
+- ALWAYS use p.id not p.name as dictionary keys for scores
+- ALWAYS preload sounds in app root initState
+- ALWAYS handle offline/no-internet gracefully with fallbacks
+- ALWAYS show loading states — never show blank screens
+- ALWAYS cancel timers in dispose() to prevent memory leaks
+- ALWAYS unsubscribe from Supabase realtime in dispose()
+- NEVER call setState() after dispose()
+- NEVER save sessions inside build() methods
+- NEVER play two copies of same sound simultaneously
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏗️ FINAL FILE STRUCTURE EXPECTED AFTER ALL CHANGES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+lib/
+  services/
+    sound_service.dart          ← NEW
+    multiplayer_service.dart    ← NEW (replaces broken one)
+  widgets/
+    player_avatar.dart          ← NEW (DiceBear robot avatars)
+    counter_row.dart            ← NEW
+    start_game_button.dart      ← NEW
+  screens/
+    shared/
+      pre_game_scaffold.dart    ← NEW
+      category_grid_screen.dart ← NEW
+      player_confirm_list.dart  ← NEW
+    multiplayer/
+      multiplayer_screen.dart   ← REBUILT
+      room_lobby_screen.dart    ← NEW
+    new_modes/
+      alibi_screen.dart         ← FIXED
+      two_truths_one_lie_screen.dart ← FIXED
+      impostor_game_screen.dart ← FIXED
+    never_have_i_ever/
+      nhie_game_screen.dart     ← FIXED
+    home/
+      home_screen.dart          ← FIXED
+
+assets/
+  sounds/
+    card-flip.mp3
+    tap.mp3
+    countdown.mp3
+    timer_tick.mp3
+    wheel_spin.mp3
+    card_reveal.mp3
+    freeze.mp3
+    win.mp3
+    game_start.mp3
+    explosion.mp3

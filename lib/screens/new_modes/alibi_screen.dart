@@ -12,6 +12,7 @@ import '../../core/widgets/animations.dart';
 import '../../core/widgets/leave_game_dialog.dart';
 import '../../services/player_manager.dart';
 import '../../services/session_service.dart';
+import '../../data/alibi_questions.dart';
 import '../../widgets/category_selector.dart';
 
 class AlibiScreen extends StatefulWidget {
@@ -36,59 +37,6 @@ class _AlibiScreenState extends State<AlibiScreen> {
   late ConfettiController _confettiController;
   final _rng = Random();
 
-  static const _alibiCategories = [
-    'Work',
-    'Party',
-    'Travel',
-    'Family',
-    'Shopping',
-    'Sports',
-    'Nature',
-    'Unexpected',
-  ];
-
-  static const _scenarios = {
-    'Work': [
-      'You were at an emergency board meeting when the incident occurred.',
-      'Your laptop crashed and you had to stay late to fix critical code.',
-      'A client flew in unexpectedly and needed a 3-hour debrief.',
-    ],
-    'Party': [
-      'You were throwing a surprise birthday party at the time.',
-      'A friend dragged you to a karaoke bar all evening.',
-      'You attended a rooftop gathering you weren\'t supposed to know about.',
-    ],
-    'Travel': [
-      'Your flight was delayed and you were stuck at the airport.',
-      'You took a wrong turn and ended up in the wrong city.',
-      'You were on a road trip with terrible phone signal.',
-    ],
-    'Family': [
-      'You were visiting a relative in the hospital all day.',
-      'Your grandparent called you for an hours-long phone catch-up.',
-      'You were mediating a family argument that escalated.',
-    ],
-    'Shopping': [
-      'You got lost in an IKEA for three hours.',
-      'You were waiting in a very long checkout line.',
-      'Your car broke down outside the mall.',
-    ],
-    'Sports': [
-      'You were coaching a youth football match that ran overtime.',
-      'You were at the gym when the power went out.',
-      'You got stuck at a sports bar watching overtime.',
-    ],
-    'Nature': [
-      'You went hiking and got mildly lost on the trail.',
-      'A sudden rainstorm trapped you in a café.',
-      'Your dog ran off and you spent hours searching.',
-    ],
-    'Unexpected': [
-      'You were helping a stranger who had a car breakdown.',
-      'You accidentally stumbled into a film shoot.',
-      'A meteor shower kept you outside all night.',
-    ],
-  };
 
   static const _questionTemplates = [
     'What exactly were you doing at {time}?',
@@ -144,9 +92,8 @@ class _AlibiScreenState extends State<AlibiScreen> {
   }
 
   String _generateScenario(List<String> categories) {
-    final cat =
-        categories[_rng.nextInt(categories.length)];
-    final list = _scenarios[cat] ?? _scenarios.values.first;
+    final cat = categories[_rng.nextInt(categories.length)];
+    final list = AlibiQuestions.getScenarios(cat);
     return list[_rng.nextInt(list.length)];
   }
 
@@ -163,28 +110,16 @@ class _AlibiScreenState extends State<AlibiScreen> {
 
   LinearGradient _categoryGradient(String cat) {
     final gradients = {
-      'Work': LinearGradient(colors: [
-        const Color(0xFF1E3A5F),
-        AppColors.background
-      ]),
-      'Party': LinearGradient(colors: [
-        const Color(0xFF5F1E5F),
-        AppColors.background
-      ]),
-      'Travel': LinearGradient(colors: [
-        const Color(0xFF1E5F5F),
-        AppColors.background
-      ]),
-      'Family': LinearGradient(colors: [
+      'Food Crime': LinearGradient(colors: [
         const Color(0xFF5F3A1E),
         AppColors.background
       ]),
-      'Sports': LinearGradient(colors: [
-        const Color(0xFF1E5F1E),
+      'Money Crime': LinearGradient(colors: [
+        const Color(0xFF1E3A5F),
         AppColors.background
       ]),
-      'Nature': LinearGradient(colors: [
-        const Color(0xFF2A5F1E),
+      'Family Drama': LinearGradient(colors: [
+        const Color(0xFF5F1E5F),
         AppColors.background
       ]),
     };
@@ -331,9 +266,9 @@ class _AlibiScreenState extends State<AlibiScreen> {
             ),
             const SizedBox(height: 10),
             CategorySelector(
-              categories: _alibiCategories,
+              categories: AlibiQuestions.categories,
               initialSelected: _selectedCategories.isEmpty
-                  ? [_alibiCategories.first]
+                  ? [AlibiQuestions.categories.first]
                   : _selectedCategories,
               onChanged: (cats) =>
                   setState(() => _selectedCategories = cats),
@@ -386,7 +321,7 @@ class _AlibiScreenState extends State<AlibiScreen> {
     bool buttonEnabled = false;
     final cat = _selectedCategories.isNotEmpty
         ? _selectedCategories.first
-        : 'Work';
+        : AlibiQuestions.categories.first;
     return StatefulBuilder(
       builder: (context, innerSet) {
         Future.delayed(const Duration(seconds: 3), () {

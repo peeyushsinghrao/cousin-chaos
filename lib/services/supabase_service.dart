@@ -2,6 +2,29 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+String _jsEnvRead(String key) {
+  if (!kIsWeb) return '';
+  try {
+    final result = _readWindowEnv(key);
+    return result;
+  } catch (_) {
+    return '';
+  }
+}
+
+String _readWindowEnv(String key) {
+  if (!kIsWeb) return '';
+  try {
+    import 'dart:js' as js;
+    final env = js.context['__ENV'];
+    if (env == null) return '';
+    final val = env[key];
+    return val?.toString() ?? '';
+  } catch (_) {
+    return '';
+  }
+}
+
 class SupabaseService {
   static SupabaseService? _instance;
   static SupabaseService get instance => _instance ??= SupabaseService._();
@@ -10,8 +33,8 @@ class SupabaseService {
   SupabaseClient get client => Supabase.instance.client;
 
   static Future<void> initialize() async {
-    const url = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
-    const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
+    String url = const String.fromEnvironment('SUPABASE_URL', defaultValue: '');
+    String anonKey = const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
     if (url.isEmpty || anonKey.isEmpty) {
       if (kDebugMode) print('[Supabase] Missing env vars — multiplayer disabled');
       return;
