@@ -12,12 +12,14 @@ import 'services/preferences_service.dart';
 import 'services/impostor_pack_manager.dart';
 import 'services/theme_pack_service.dart';
 import 'services/supabase_service.dart';
+import 'services/sound_service.dart';
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   await SupabaseService.initialize();
   final seenOnboarding = await hasSeenOnboarding();
+  await SoundService.instance.preload();
   FlutterNativeSplash.remove();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

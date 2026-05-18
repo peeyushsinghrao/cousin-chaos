@@ -23,24 +23,43 @@ enum SoundEvent {
   gameStart,
 }
 
+// Filename for each event (null = synthesised fallback only)
 const Map<SoundEvent, String> _mp3Files = {
   SoundEvent.tap:            'tap.mp3',
   SoundEvent.cardFlip:       'card_flip.mp3',
   SoundEvent.cardReveal:     'card_reveal.mp3',
   SoundEvent.wheelSpin:      'wheel_spin.mp3',
-  SoundEvent.wheelLand:      'wheel_land.mp3',
-  SoundEvent.wheelTick:      'wheel_tick.mp3',
-  SoundEvent.nextPlayer:     'next_player.mp3',
   SoundEvent.win:            'win.mp3',
-  SoundEvent.wrong:          'wrong.mp3',
   SoundEvent.timerTick:      'timer_tick.mp3',
-  SoundEvent.timerEnd:       'timer_end.mp3',
-  SoundEvent.pageTransition: 'page_transition.mp3',
+  SoundEvent.timerEnd:       'timer_tick.mp3',   // same file — alarm is at end
   SoundEvent.countdown:      'countdown.mp3',
   SoundEvent.bombTick:       'bomb_tick.mp3',
   SoundEvent.freeze:         'freeze.mp3',
   SoundEvent.explosion:      'explosion.mp3',
   SoundEvent.gameStart:      'game_start.mp3',
+  SoundEvent.nextPlayer:     'tap.mp3',          // alias
+  SoundEvent.pageTransition: 'page_transition.mp3', // alias (copy of tap)
+};
+
+// Per-event volume (0.0–1.0)
+const Map<SoundEvent, double> _volumes = {
+  SoundEvent.tap:            0.5,
+  SoundEvent.cardFlip:       0.7,
+  SoundEvent.cardReveal:     0.8,
+  SoundEvent.wheelSpin:      0.9,
+  SoundEvent.wheelTick:      0.9,
+  SoundEvent.wheelLand:      0.9,
+  SoundEvent.nextPlayer:     0.5,
+  SoundEvent.win:            1.0,
+  SoundEvent.wrong:          0.8,
+  SoundEvent.timerTick:      0.6,
+  SoundEvent.timerEnd:       0.6,
+  SoundEvent.pageTransition: 0.3,
+  SoundEvent.countdown:      0.9,
+  SoundEvent.bombTick:       0.7,
+  SoundEvent.freeze:         0.8,
+  SoundEvent.explosion:      1.0,
+  SoundEvent.gameStart:      1.0,
 };
 
 typedef _Tone = ({double freq, double dur, String wave});
@@ -69,40 +88,93 @@ class SoundService {
   static final SoundService instance = SoundService._();
   SoundService._();
 
-  final AudioPlayer _player = AudioPlayer();
-  final Set<SoundEvent> _availableMp3s = {};
-  final Set<SoundEvent> _checkedEvents = {};
+  // Dedicated players: long-form sounds don't interrupt short UI sounds
+  final AudioPlayer _uiPlayer   = AudioPlayer();  // tap, flip, tick, transition
+  final AudioPlayer _longPlayer = AudioPlayer();  // wheel_spin, win, explosion, etc.
+
+  final Set<SoundEvent> _availableMp3s  = {};
+  final Set<SoundEvent> _checkedEvents  = {};
+
+  // Events that use the sustained long player
+  static const _longEvents = {
+    SoundEvent.wheelSpin,
+    SoundEvent.win,
+    SoundEvent.explosion,
+    SoundEvent.gameStart,
+    SoundEvent.freeze,
+    SoundEvent.countdown,
+    SoundEvent.timerEnd,
+  };
+
+  // wheel_spin.mp3 is a complete file (spin + ticks + land).
+  // wheelTick and wheelLand are no-ops when the MP3 is available.
+  static const _wheelCoveredEvents = {
+    SoundEvent.wheelTick,
+    SoundEvent.wheelLand,
+  };
+
+  /// Call once at app startup to pre-check which MP3s exist.
+  Future<void> preload() async {
+    final allEvents = SoundEvent.values;
+    for (final event in allEvents) {
+      final filename = _mp3Files[event];
+      if (filename == null) continue;
+      try {
+        await rootBundle.load('assets/sounds/$filename');
+        _availableMp3s.add(event);
+      } catch (_) {}
+      _checkedEvents.add(event);
+    }
+  }
 
   Future<void> play(SoundEvent event, {required bool soundEnabled}) async {
     if (!soundEnabled) return;
-    try {
-      if (!_checkedEvents.contains(event)) {
-        _checkedEvents.add(event);
-        final filename = _mp3Files[event];
-        if (filename != null) {
-          try {
-            await rootBundle.load('assets/sounds/$filename');
-            _availableMp3s.add(event);
-          } catch (_) {}
-        }
-      }
 
+    // wheel_spin.mp3 covers ticks and land — skip those separately
+    if (_wheelCoveredEvents.contains(event) && _availableMp3s.contains(SoundEvent.wheelSpin)) {
+      return;
+    }
+
+    // Lazy-check if not preloaded yet
+    if (!_checkedEvents.contains(event)) {
+      _checkedEvents.add(event);
+      final filename = _mp3Files[event];
+      if (filename != null) {
+        try {
+          await rootBundle.load('assets/sounds/$filename');
+          _availableMp3s.add(event);
+        } catch (_) {}
+      }
+    }
+
+    final volume = _volumes[event] ?? 0.7;
+    final player = _longEvents.contains(event) ? _longPlayer : _uiPlayer;
+
+    try {
       if (_availableMp3s.contains(event)) {
-        await _player.play(AssetSource('sounds/${_mp3Files[event]}'));
+        await player.stop();
+        await player.setVolume(volume);
+        await player.play(AssetSource('sounds/${_mp3Files[event]}'));
       } else {
         final tone = _fallbackTones[event];
         if (tone == null) return;
         final bytes = _buildWav(tone.freq, tone.dur, tone.wave);
-        await _player.play(BytesSource(bytes));
+        await player.stop();
+        await player.setVolume(volume);
+        await player.play(BytesSource(bytes));
       }
     } catch (_) {}
   }
 
   Future<void> stop() async {
-    try { await _player.stop(); } catch (_) {}
+    try { await _uiPlayer.stop(); } catch (_) {}
+    try { await _longPlayer.stop(); } catch (_) {}
   }
 
-  void dispose() => _player.dispose();
+  void dispose() {
+    _uiPlayer.dispose();
+    _longPlayer.dispose();
+  }
 
   static Uint8List _buildWav(double freq, double durationSec, String waveType,
       {int sampleRate = 22050, double amplitude = 0.25}) {

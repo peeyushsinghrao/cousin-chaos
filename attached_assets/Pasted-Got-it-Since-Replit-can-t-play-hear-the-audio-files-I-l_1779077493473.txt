@@ -1,0 +1,267 @@
+Got it! Since Replit can't play/hear the audio files, I'll describe each sound in full detail so the agent knows exactly what kind of sound it is and how to use it perfectly.
+
+---
+
+# 🔊 Cousin Chaos — Full Sound Effects Guide for Replit AI Agent
+
+> The agent cannot hear these files. This guide describes every sound in precise detail so the agent implements each one correctly in the app.
+
+---
+
+## 📁 File-by-File Sound Descriptions
+
+---
+
+### 1. `wheel_spin.mp3`
+**Used for:** Wheel Spin + Wheel Tick + Wheel Land (3 events, 1 file)
+
+**What it sounds like:**
+- Starts with a fast spinning/whooshing mechanical rotation sound
+- In the middle it has rapid clicking tick sounds (like a roulette wheel ticking against pegs) that slow down gradually
+- Ends with a final solid THUD or CLICK when the wheel stops on a player
+
+**How to use in app:**
+- Play from the **beginning** when the wheel starts spinning
+- The ticking in the middle plays automatically as the wheel slows
+- The final thud at the end = wheel land event
+- Play the **full file** in one go — do NOT split it
+- Should loop if the spin animation is longer than the sound
+
+---
+
+### 2. `tap.mp3`
+**Used for:** Button Tap + Next Player button
+
+**What it sounds like:**
+- Very short, sharp, clean tap sound
+- Like tapping a finger on a glass surface or a soft UI click
+- Duration: under 0.3 seconds
+- No echo, no reverb — very crisp and instant
+
+**How to use in app:**
+- Play on every button press across the whole app
+- Play when "Next Player" is tapped
+- Should never overlap — if tapped fast, restart the sound each time
+- Volume should be medium-low so it doesn't overpower
+
+---
+
+### 3. `card-flip.mp3`
+**Used for:** Card Flip animation
+
+**What it sounds like:**
+- A quick swooshing paper/card flick sound
+- Like physically flipping a playing card with your thumb
+- Has a slight air-whoosh + soft thwack at the end
+- Duration: around 0.3–0.5 seconds
+
+**How to use in app:**
+- Play exactly when the card flip animation starts (the 3D rotation begins)
+- Sync the peak of the sound with the halfway point of the flip
+- Do NOT loop — single play only
+
+---
+
+### 4. `card_reveal.mp3`
+**Used for:** Card Reveal (after flip, content appears)
+
+**What it sounds like:**
+- A magical shimmer or sparkle sound
+- Like a small "ding" or chime with a slight reverb tail
+- Feels satisfying and rewarding — like something being unveiled
+- Duration: 0.5–1 second
+
+**How to use in app:**
+- Play when the card finishes flipping and the content (question/dare/word) becomes visible
+- This is AFTER `card-flip.mp3` — they play in sequence, not together
+- Play once, no loop
+
+---
+
+### 5. `countdown.mp3`
+**Used for:** Countdown timer (3-2-1 style)
+
+**What it sounds like:**
+- A series of 3 distinct beeps, each one getting slightly more intense/higher
+- Like a classic 3-2-1 countdown — beep… beep… BEEP
+- Final beep is louder or different tone to signal "GO"
+- Duration: roughly 3 seconds total
+
+**How to use in app:**
+- Play when a timed phase is about to begin (e.g. alibi time, act it out timer starting)
+- Do NOT loop — plays once before the timer starts
+- The final beep should align with when the game action starts
+
+---
+
+### 6. `timer_tick.mp3`
+**Used for:** Timer Tick (every second) + Timer End (when time runs out)
+
+**What it sounds like:**
+- Starts with a steady rhythmic tick sound (like a clock ticking)
+- Each tick is short and precise — one tick per second
+- Near the end it gets faster or more urgent
+- Ends with a loud BUZZ or ALARM sound signalling time is up
+
+**How to use in app:**
+- Play one tick sound every second while timer is running
+- When timer hits 0, play the final buzz/alarm portion of the file
+- For the per-second tick: play only the first 0.5 seconds of the file on each tick
+- For the end alarm: play the tail end of the file when `_timeLeft == 0`
+- Alternatively play the whole file once and let it run — it covers both naturally
+
+---
+
+### 7. `win.mp3`
+**Used for:** Win screen / Game Over / Leaderboard reveal
+
+**What it sounds like:**
+- A celebratory fanfare or victory jingle
+- Upbeat, cheerful — like a short "You Win!" sound from a mobile game
+- Might have confetti-style sparkle sounds + a triumphant melody
+- Duration: 2–4 seconds
+
+**How to use in app:**
+- Play once when the final score/leaderboard screen appears
+- Do NOT loop
+- Should be one of the louder sounds — this is a celebration moment
+
+---
+
+### 8. `game_start.mp3`
+**Used for:** Game Start screen / "Let's Go" button
+
+**What it sounds like:**
+- An energetic, hype-building sound
+- Like a game show intro hit — punchy bass + rising tone
+- Feels like "something big is about to happen"
+- Duration: 1–2 seconds
+
+**How to use in app:**
+- Play when the user taps "Let's Go" / "Start Game"
+- Play as the game transitions from settings/setup into actual gameplay
+- Play once, no loop
+
+---
+
+### 9. `explosion.mp3`
+**Used for:** Bomb Pass / Explosion moment / Player elimination
+
+**What it sounds like:**
+- A classic cartoon/game explosion sound
+- Loud BOOM with rumble and debris scatter sounds
+- Not realistic — more fun and exaggerated
+- Duration: 1–2 seconds
+
+**How to use in app:**
+- Play when the bomb explodes in Bomb Pass mode
+- Play when a player is eliminated in Last Standing or similar
+- Can also be used for any high-stakes fail moment
+- Play at full volume for maximum impact
+
+---
+
+### 10. `freeze.mp3`
+**Used for:** Freeze Mode / Player frozen event
+
+**What it sounds like:**
+- An icy, crystalline freeze sound
+- Like a cold whoosh + shattering ice or glass crystals
+- Has a cold/wintery digital feel
+- Duration: 0.5–1.5 seconds
+
+**How to use in app:**
+- Play when a player gets "frozen" in Freeze Mode
+- Play when the freeze challenge card appears
+- Should feel sudden and sharp — not gradual
+
+---
+
+## 🤖 Agent-Decided Sounds (No File Provided)
+
+---
+
+### 🔴 Bomb Tick
+**No file uploaded — agent must handle this**
+
+**What it should sound like:**
+- A slow, deep TICK… TICK… TICK
+- Gets faster as time runs out (tension building)
+- Each tick is about 0.3 seconds long
+- Similar to `timer_tick.mp3` but more ominous/dramatic
+
+**Agent options:**
+- **Option A:** Reuse `timer_tick.mp3` at 0.8x playback speed for the slow ticks, then speed up to 1.5x as time decreases
+- **Option B:** Use a programmatically generated beep with `AudioPlayer` at 440Hz, 100ms duration, repeated
+- **Recommended:** Option A — reuse `timer_tick.mp3` with speed variation
+
+---
+
+### 🔵 Page Transition
+**No file uploaded — agent must handle this**
+
+**What it should sound like:**
+- A very subtle, soft swoosh
+- Like a page sliding in from the side
+- Should be barely noticeable — just adds polish
+- Duration: under 0.2 seconds
+
+**Agent options:**
+- **Option A:** Reuse `tap.mp3` at 30% volume
+- **Option B:** Reuse `card-flip.mp3` at 20% volume and 0.5x speed
+- **Recommended:** Option A — `tap.mp3` at low volume is cleanest
+
+---
+
+## ⚙️ Implementation Rules for Agent
+
+```
+1. All files go in:  assets/sounds/
+
+2. Declare ALL files in pubspec.yaml under flutter > assets
+
+3. Use a single AudioService / SoundManager class —
+   never call AudioPlayer directly from UI widgets
+
+4. Every sound must have a VOLUME level set:
+   - tap.mp3          → 0.5 (subtle)
+   - card-flip.mp3    → 0.7
+   - card_reveal.mp3  → 0.8
+   - countdown.mp3    → 0.9
+   - timer_tick.mp3   → 0.6
+   - wheel_spin.mp3   → 0.9
+   - win.mp3          → 1.0 (full)
+   - game_start.mp3   → 1.0 (full)
+   - explosion.mp3    → 1.0 (full)
+   - freeze.mp3       → 0.8
+   - Page transition  → 0.3 (very subtle)
+   - Bomb tick        → 0.7
+
+5. Always check if sound is enabled in settings
+   before playing — respect the mute toggle
+
+6. Never play two copies of the same file simultaneously
+   — cancel the previous play before restarting
+
+7. Preload all sounds in initState of the app root
+   so there is zero delay on first play
+```
+
+---
+
+## 📋 Quick Reference Card
+
+```
+wheel_spin.mp3   →  Spin + Tick + Land (full file, one play)
+tap.mp3          →  All taps + Next Player
+card-flip.mp3    →  Card flip animation starts
+card_reveal.mp3  →  Card content appears (after flip)
+countdown.mp3    →  3-2-1 before timed phase
+timer_tick.mp3   →  Every second tick + time's up alarm
+win.mp3          →  Win screen / leaderboard
+game_start.mp3   →  Let's Go button / game begins
+explosion.mp3    →  Bomb explodes / eliminated
+freeze.mp3       →  Player frozen
+[bomb tick]      →  Reuse timer_tick.mp3 with speed variation
+[page slide]     →  Reuse tap.mp3 at 30% volume
+```

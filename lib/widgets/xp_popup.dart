@@ -14,7 +14,7 @@ class XpPopup {
       ),
     );
     overlay.insert(entry);
-    SoundService.instance.play(SoundEvent.xpGain, soundEnabled: true);
+    SoundService.instance.play(SoundEvent.win, soundEnabled: true);
   }
 }
 
