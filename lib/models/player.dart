@@ -1,12 +1,14 @@
 class Player {
   final String id;
   String name;
+  String? emoji;
   int score;
   int skipTokens;
 
   Player({
     required this.id,
     required this.name,
+    this.emoji,
     this.score = 0,
     this.skipTokens = 0,
   });
@@ -14,6 +16,7 @@ class Player {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        'emoji': emoji,
         'score': score,
         'skipTokens': skipTokens,
       };
@@ -21,6 +24,7 @@ class Player {
   factory Player.fromJson(Map<String, dynamic> json) => Player(
         id: json['id'],
         name: json['name'],
+        emoji: json['emoji'] as String?,
         score: json['score'] ?? 0,
         skipTokens: json['skipTokens'] ?? 0,
       );

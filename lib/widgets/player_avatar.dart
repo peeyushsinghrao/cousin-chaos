@@ -8,6 +8,7 @@ class PlayerAvatar extends StatelessWidget {
   final bool isActive;
   final double size;
   final String? imageUrl;
+  final String? emoji;
 
   const PlayerAvatar({
     super.key,
@@ -16,6 +17,7 @@ class PlayerAvatar extends StatelessWidget {
     this.isActive = false,
     this.size = 48,
     this.imageUrl,
+    this.emoji,
   });
 
   @override
@@ -41,9 +43,7 @@ class PlayerAvatar extends StatelessWidget {
                 ? Image.network(
                     imageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return _buildDefaultAvatar();
-                    },
+                    errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
                   )
                 : _buildDefaultAvatar(),
           ),
@@ -67,14 +67,19 @@ class PlayerAvatar extends StatelessWidget {
     return Container(
       color: color.withAlpha(76),
       child: Center(
-        child: Text(
-          playerName.isNotEmpty ? playerName[0].toUpperCase() : '?',
-          style: TextStyle(
-            color: color,
-            fontSize: size * 0.4,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: emoji != null && emoji!.isNotEmpty
+            ? Text(
+                emoji!,
+                style: TextStyle(fontSize: size * 0.48),
+              )
+            : Text(
+                playerName.isNotEmpty ? playerName[0].toUpperCase() : '?',
+                style: TextStyle(
+                  color: color,
+                  fontSize: size * 0.4,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }

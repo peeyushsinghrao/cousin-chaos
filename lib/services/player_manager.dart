@@ -71,6 +71,15 @@ class PlayerManager extends ChangeNotifier {
 
   void renamePlayer(String id, String newName) => updatePlayerName(id, newName);
 
+  void updatePlayerEmoji(String id, String? emoji) {
+    final index = _players.indexWhere((p) => p.id == id);
+    if (index != -1) {
+      _players[index].emoji = emoji;
+      _savePlayers();
+      notifyListeners();
+    }
+  }
+
   void updatePlayerSkipTokens(String id, int skipTokens) {
     final index = _players.indexWhere((p) => p.id == id);
     if (index != -1) {

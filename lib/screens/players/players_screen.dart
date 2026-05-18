@@ -301,10 +301,32 @@ class _PlayerCardState extends State<_PlayerCard> {
                 ),
               ),
               const SizedBox(width: 10),
-              PlayerAvatar(
-                playerName: widget.player.name,
-                color: _avatarColor,
-                size: 42,
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  _showEmojiPicker();
+                },
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    PlayerAvatar(
+                      playerName: widget.player.name,
+                      color: _avatarColor,
+                      size: 42,
+                      emoji: widget.player.emoji,
+                    ),
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1428),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _avatarColor.withAlpha(120), width: 1),
+                      ),
+                      child: const Icon(Icons.edit, size: 9, color: Colors.white54),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -410,5 +432,87 @@ class _PlayerCardState extends State<_PlayerCard> {
 
   void _delete() {
     widget.pm.removePlayer(widget.player.id);
+  }
+
+  void _showEmojiPicker() {
+    const emojis = [
+      '😈','👻','🎭','🔥','⚡','🎲','🎯','🏆',
+      '👑','💀','🎪','🌪️','💣','🥊','🎸','🚀',
+      '🦁','🐯','🦊','🐺','🦅','🐉','🦄','🤡',
+      '💪','🫡','😎','🤩','😜','🥳','😤','🤯',
+    ];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1428),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Pick an avatar',
+              style: GoogleFonts.sora(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 16),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 8,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+              ),
+              itemCount: emojis.length,
+              itemBuilder: (_, i) {
+                final e = emojis[i];
+                final isSelected = widget.player.emoji == e;
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    widget.pm.updatePlayerEmoji(
+                      widget.player.id,
+                      isSelected ? null : e,
+                    );
+                    Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primary.withAlpha(50)
+                          : Colors.white.withAlpha(10),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(e, style: const TextStyle(fontSize: 22)),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
