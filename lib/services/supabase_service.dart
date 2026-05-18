@@ -2,29 +2,6 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-String _jsEnvRead(String key) {
-  if (!kIsWeb) return '';
-  try {
-    final result = _readWindowEnv(key);
-    return result;
-  } catch (_) {
-    return '';
-  }
-}
-
-String _readWindowEnv(String key) {
-  if (!kIsWeb) return '';
-  try {
-    import 'dart:js' as js;
-    final env = js.context['__ENV'];
-    if (env == null) return '';
-    final val = env[key];
-    return val?.toString() ?? '';
-  } catch (_) {
-    return '';
-  }
-}
-
 class SupabaseService {
   static SupabaseService? _instance;
   static SupabaseService get instance => _instance ??= SupabaseService._();
@@ -33,8 +10,8 @@ class SupabaseService {
   SupabaseClient get client => Supabase.instance.client;
 
   static Future<void> initialize() async {
-    String url = const String.fromEnvironment('SUPABASE_URL', defaultValue: '');
-    String anonKey = const String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
+    const url = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
+    const anonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
     if (url.isEmpty || anonKey.isEmpty) {
       if (kDebugMode) print('[Supabase] Missing env vars — multiplayer disabled');
       return;
@@ -119,40 +96,56 @@ class SupabaseService {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'room_players',
-          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'room_id', value: roomId),
+          filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'room_id',
+              value: roomId),
           callback: (payload) => onPlayersChanged(payload.newRecord),
         )
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
           table: 'rooms',
-          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'id', value: roomId),
+          filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'id',
+              value: roomId),
           callback: (payload) => onRoomChanged(payload.newRecord),
         )
         .subscribe();
   }
 
-  Future<void> updateRoomState(String roomId, Map<String, dynamic> state) async {
+  Future<void> updateRoomState(
+      String roomId, Map<String, dynamic> state) async {
     await client.from('rooms').update({'game_state': state}).eq('id', roomId);
   }
 
   Future<void> startGame(String roomId) async {
-    await client.from('rooms').update({'status': 'playing'}).eq('id', roomId);
+    await client
+        .from('rooms')
+        .update({'status': 'playing'})
+        .eq('id', roomId);
   }
 
   Future<void> leaveRoom(String roomId, String playerName) async {
-    await client.from('room_players')
+    await client
+        .from('room_players')
         .delete()
         .eq('room_id', roomId)
         .eq('player_name', playerName);
   }
 
   Future<void> closeRoom(String roomId) async {
-    await client.from('rooms').update({'status': 'closed'}).eq('id', roomId);
+    await client
+        .from('rooms')
+        .update({'status': 'closed'})
+        .eq('id', roomId);
   }
 
-  Future<void> updatePlayerScore(String roomId, String playerName, int score, int xp) async {
-    await client.from('room_players')
+  Future<void> updatePlayerScore(
+      String roomId, String playerName, int score, int xp) async {
+    await client
+        .from('room_players')
         .update({'score': score, 'xp': xp})
         .eq('room_id', roomId)
         .eq('player_name', playerName);
